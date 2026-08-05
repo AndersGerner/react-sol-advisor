@@ -17,8 +17,8 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 - [x] Task 2 — create isolated namespaced native roles and safe installer
 - [x] Task 3 — implement Luna-first orchestration and routing policy
 - [x] Task 4 — implement React production-delivery skill and packet integration
-- [ ] Task 5 — implement task/thread lifecycle and capability-gated archiving
-- [ ] Task 6 — implement optional Linear intake
+- [x] Task 5 — implement task/thread lifecycle and capability-gated archiving
+- [x] Task 6 — implement optional Linear intake
 - [ ] Task 7 — rewrite and expand repository verification
 - [ ] Task 8 — complete installation docs and usage examples
 - [ ] Task 9 — run manual scenario matrix and local installation smoke test

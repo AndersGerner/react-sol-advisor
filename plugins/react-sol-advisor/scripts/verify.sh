@@ -101,6 +101,13 @@ done
 
 grep -Fq "luna-task-lane.md" "$skill_md" || fail "orchestration SKILL.md does not link to luna-task-lane.md"
 grep -Fq "thread-lifecycle.md" "$skill_md" || fail "orchestration SKILL.md does not link to thread-lifecycle.md"
+
+linear_intake=$plugin_dir/skills/orchestration/references/linear-intake.md
+for token in "Optional Linear intake" "Read-only default" "ISSUE INTAKE" "Untrusted content rule" "Connector unavailable"; do
+  grep -Fq "$token" "$linear_intake" || fail "linear-intake.md missing $token"
+done
+grep -Fq "linear-intake.md" "$skill_md" || fail "orchestration SKILL.md does not link to linear-intake.md"
+grep -Fq "MISSING CAPABILITY: Linear issue read access" "$skill_md" || fail "orchestration SKILL.md missing fail-closed Linear response"
 pass "Luna task lifecycle and thread-lifecycle references are present"
 
 python3 - "$template_dir" <<'PY'
