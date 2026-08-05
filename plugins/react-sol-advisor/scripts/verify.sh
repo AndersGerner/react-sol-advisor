@@ -84,7 +84,24 @@ done
 for token in "Testing contract" "Verification order" "Accessibility checklist"; do
   grep -Fq "$token" "$react_testing" || fail "testing-accessibility.md missing $token"
 done
-pass "React production-delivery skill and references are present and covered"
+luna_lane=$plugin_dir/skills/orchestration/references/luna-task-lane.md
+thread_lifecycle=$plugin_dir/skills/orchestration/references/thread-lifecycle.md
+
+for f in "$luna_lane" "$thread_lifecycle"; do
+  test -f "$f" || fail "missing lifecycle file: $f"
+done
+
+for token in "Capability preflight" "Complete Luna task packet" "Thread identity" "Monitoring and handoff" "Correction loop" "PR authorization" "Concurrency and dependency rules"; do
+  grep -Fq "$token" "$luna_lane" || fail "luna-task-lane.md missing $token"
+done
+
+for token in "Capability-gated archiving" "Supported archive operation exists" "No supported archive operation exists" "Parent final return" "Concurrency and dependency rules"; do
+  grep -Fq "$token" "$thread_lifecycle" || fail "thread-lifecycle.md missing $token"
+done
+
+grep -Fq "luna-task-lane.md" "$skill_md" || fail "orchestration SKILL.md does not link to luna-task-lane.md"
+grep -Fq "thread-lifecycle.md" "$skill_md" || fail "orchestration SKILL.md does not link to thread-lifecycle.md"
+pass "Luna task lifecycle and thread-lifecycle references are present"
 
 python3 - "$template_dir" <<'PY'
 from pathlib import Path

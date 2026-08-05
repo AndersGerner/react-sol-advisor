@@ -211,8 +211,10 @@ only after the prior stack is accepted and its actual branch, commit, and PR sta
 recorded. Run independent, non-overlapping stacks concurrently; serialize shared-file
 and dependent stacks.
 
-Use the complete packet and branch rules in
-[references/luna-task-lane.md](references/luna-task-lane.md).
+Use the complete packet, branch rules, monitoring, correction loop, and parent
+acceptance checklist in [references/luna-task-lane.md](references/luna-task-lane.md).
+For capability-gated archiving, concurrency rules, and the parent final-return schema,
+see [references/thread-lifecycle.md](references/thread-lifecycle.md).
 
 ## Route amber economy work as decomposed mixed
 

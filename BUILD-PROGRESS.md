@@ -16,7 +16,7 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 - [x] Task 1 — establish fork identity, attribution, and namespace
 - [x] Task 2 — create isolated namespaced native roles and safe installer
 - [x] Task 3 — implement Luna-first orchestration and routing policy
-- [ ] Task 4 — implement React production-delivery skill and packet integration
+- [x] Task 4 — implement React production-delivery skill and packet integration
 - [ ] Task 5 — implement task/thread lifecycle and capability-gated archiving
 - [ ] Task 6 — implement optional Linear intake
 - [ ] Task 7 — rewrite and expand repository verification
@@ -53,6 +53,8 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 | Task 2 | `git diff --stat plugins/sol-advisor` | upstream untouched | no output | 0 | e6602e7 |
 | Task 3 | `sh plugins/react-sol-advisor/scripts/verify.sh` | routing and role contract checks pass | VERIFY PASSED | 0 | 79c77a5 |
 | Task 3 | `git diff --check` | no whitespace errors | exit 0 | 0 | 79c77a5 |
+| Task 4 | `sh plugins/react-sol-advisor/scripts/verify.sh` | React contract checks pass | VERIFY PASSED | 0 | 893eeb9 |
+| Task 4 | `git diff --check` | no whitespace errors | exit 0 | 0 | 893eeb9 |
 
 ## Manual scenarios
 

@@ -1,14 +1,13 @@
-# Luna task and thread lifecycle
+# Thread lifecycle and capability-gated archiving
 
-## 1. Scope
+This reference covers the complete Luna task lifecycle, including capability-gated
+archiving, concurrency, dependency rules, and the parent final return. It is a
+companion to [luna-task-lane.md](luna-task-lane.md).
 
-This contract governs user-visible GPT-5.6 Luna / Max Codex tasks. It is separate from native subagents and never uses a Luna custom-agent TOML.
+## Capability preflight
 
-The parent Sol task remains responsible for task creation, monitoring, correction decisions, repository verification, PR authorization, dependency ordering, cleanup, and final acceptance.
-
-## 2. Capability preflight
-
-Before choosing the Luna lane, discover and validate the task operations required by the current runtime. The upstream reference uses these operations:
+Before choosing the Luna lane, discover and validate the task operations required by the
+current runtime:
 
 ```text
 list_projects
@@ -19,11 +18,13 @@ read_thread
 send_message_to_thread
 ```
 
-Use the actual exposed schemas. Require accepted routing for `gpt-5.6-luna` with `max` thinking. When any required capability is unavailable, stop the Luna lane without silent fallback.
+Use the actual exposed schemas. Require accepted routing for `gpt-5.6-luna` with `max`
+thinking. When any required capability is unavailable, stop the Luna lane without silent
+fallback.
 
-Archive behavior has a separate optional gate; see section 10.
+Archive behavior has a separate optional gate; see the archiving section below.
 
-## 3. Project and environment selection
+## Project and environment selection
 
 1. List projects and select the intended project from returned identity, not a guessed title.
 2. Inspect whether it is a Git repository.
@@ -32,9 +33,10 @@ Archive behavior has a separate optional gate; see section 10.
 5. Record exact project ID, repository flag, base/starting state, and any returned worktree/branch metadata.
 6. Do not assume worktree isolation makes concurrent edits merge-safe.
 
-## 4. Complete Luna task packet
+## Complete Luna task packet
 
-Every Luna child receives a self-contained packet. It does not inherit the parent’s full conversation.
+Every Luna child receives a self-contained packet. It does not inherit the parent's full
+conversation.
 
 Required sections:
 
@@ -89,7 +91,7 @@ Use the schema in the React production contract plus task/thread identity and PR
 
 No placeholder may remain when the task is created.
 
-## 5. Thread identity
+## Thread identity
 
 A task-creation response may return either a ready real task identity or a setup handle.
 
@@ -99,15 +101,15 @@ A task-creation response may return either a ready real task identity or a setup
 - Use bounded discovery. If a real task identity cannot be established, stop and report the failure.
 - Record real `threadId` and `hostId` before waiting, reading, or correcting.
 
-## 6. Monitoring and handoff
+## Monitoring and handoff
 
 - Wait on the real task identity with bounded calls.
 - Read the completed or attention-required task explicitly.
 - There is no assumed automatic callback.
-- Treat the child’s structured return as a claim.
+- Treat the child's structured return as a claim.
 - Independently inspect the actual branch/worktree, base, status, changed files, complete diff, commit state, test output, and PR state.
 
-## 7. Correction loop
+## Correction loop
 
 When the parent finds a defect:
 
@@ -117,9 +119,10 @@ When the parent finds a defect:
 4. Reinspect the actual repository state and rerun verification.
 5. Repeat only while progress is material.
 
-Do not create a replacement task solely to avoid accumulated corrections or worker disagreement. A new task is for a genuinely independent stack.
+Do not create a replacement task solely to avoid accumulated corrections or worker
+disagreement. A new task is for a genuinely independent stack.
 
-## 8. Parent acceptance
+## Parent acceptance
 
 The parent may accept only after it has:
 
@@ -134,7 +137,7 @@ The parent may accept only after it has:
 
 Any correction invalidates the previous child handoff.
 
-## 9. PR authorization
+## PR authorization
 
 The default is no child PR action.
 
@@ -151,7 +154,7 @@ PR AUTHORIZED FOR <real-thread-id>
 4. Parent records concrete returned URL plus branch and commit evidence.
 5. A dependent task starts only after the prior accepted base exists and is recorded.
 
-## 10. Capability-gated archiving
+## Capability-gated archiving
 
 Archiving is optional cleanup, not a correctness prerequisite.
 
@@ -175,9 +178,10 @@ THREADS_READY_TO_ARCHIVE:
   reason: accepted; branch/commit/PR recorded
 ```
 
-Do not access undocumented app-server transport, local databases, session files, or task storage to simulate archive behavior.
+Do not access undocumented app-server transport, local databases, session files, or task
+storage to simulate archive behavior.
 
-## 11. Concurrency and dependency rules
+## Concurrency and dependency rules
 
 - Concurrent tasks require non-overlapping owned files/modules and no dependency.
 - Shared files, generated artifacts, lockfiles, migrations, schemas, and dependent stacks are serial unless the parent proves merge-safe ownership.
@@ -185,7 +189,7 @@ Do not access undocumented app-server transport, local databases, session files,
 - A dependent task starts from an existing accepted branch/commit, never a guessed future branch.
 - Children do not merge, rebase, cherry-pick, or manipulate other stacks.
 
-## 12. Parent final return
+## Parent final return
 
 ```text
 STATUS: complete | partial | blocked
