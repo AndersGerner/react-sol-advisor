@@ -46,6 +46,8 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 | Task 1 | `jq empty .agents/plugins/marketplace.json plugins/react-sol-advisor/.codex-plugin/plugin.json` | JSON parses | JSON OK | 0 | eee442e |
 | Task 1 | `git diff --check` | no whitespace errors | exit 0 | 0 | eee442e |
 | Task 1 | `git status --short` | only expected files staged | expected files staged | 0 | eee442e |
+| Task 7 | `sh plugins/react-sol-advisor/scripts/verify.sh` | stale-identifier and link checks pass | VERIFY PASSED | 0 | 27c3bf3 |
+| Task 7 | `git diff --check` | no whitespace errors | exit 0 | 0 | 27c3bf3 |
 | Task 2 | `sh plugins/react-sol-advisor/scripts/verify.sh` | role and installer checks pass | VERIFY PASSED | 0 | e6602e7 |
 | Task 2 | `sh -n plugins/react-sol-advisor/scripts/*.sh` | shell syntax | passed | 0 | e6602e7 |
 | Task 2 | `python3 -c 'import tomllib; ...'` | TOML pins exact | two exact role pins are valid | 0 | e6602e7 |

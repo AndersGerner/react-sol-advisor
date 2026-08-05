@@ -258,7 +258,6 @@ UPSTREAM.md
 CHANGELOG.md
 LICENSE
 BUILD-PROGRESS.md
-README.md
 plugins/sol-advisor
 plugins/react-sol-advisor/scripts/verify.sh
 plugins/react-sol-advisor/scripts/install-agents.sh
