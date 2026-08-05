@@ -252,4 +252,86 @@ zero_id=22222222-2222-7222-8222-222222222222
 if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$zero_id" >/dev/null 2>&1; then fail "runtime inspector accepted zero matches"; fi
 pass "runtime inspector routing and safe refusal"
 
+# Stale-identifier scan (only tracked files)
+stale_exceptions="
+UPSTREAM.md
+CHANGELOG.md
+LICENSE
+BUILD-PROGRESS.md
+README.md
+plugins/sol-advisor
+plugins/react-sol-advisor/scripts/verify.sh
+plugins/react-sol-advisor/scripts/install-agents.sh
+"
+
+python3 - "$repo_dir" "$stale_exceptions" <<'PY'
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+repo = Path(sys.argv[1])
+raw_exceptions = sys.argv[2].strip().splitlines()
+
+# Build file and directory exception sets
+excluded_files = set()
+excluded_dirs = set()
+for e in raw_exceptions:
+    e = e.strip()
+    if not e:
+        continue
+    p = repo / e
+    if p.is_dir():
+        excluded_dirs.add(p)
+    else:
+        excluded_files.add(p)
+
+stale_re = re.compile(r'(?<!react-)sol-advisor|(?<!react_)sol_advisor_', re.IGNORECASE)
+allowed_exts = {'.md', '.json', '.yaml', '.yml', '.toml', '.sh'}
+
+try:
+    tracked = subprocess.check_output(['git', '-C', str(repo), 'ls-files'], text=True)
+except subprocess.CalledProcessError as e:
+    raise SystemExit(f"could not list tracked files: {e}")
+
+for line in tracked.splitlines():
+    p = repo / line
+    if p.suffix not in allowed_exts:
+        continue
+    if p in excluded_files:
+        continue
+    if any(p.is_relative_to(d) for d in excluded_dirs):
+        continue
+    text = p.read_text(encoding='utf-8')
+    for m in stale_re.finditer(text):
+        lineno = text[:m.start()].count('\n') + 1
+        raise SystemExit(f"stale identifier in {line}:{lineno}: {m.group()}")
+print("stale-identifier scan passed")
+PY
+pass "stale-identifier scan has no outside-attribution stale names"
+
+# Relative-link existence check
+python3 - "$plugin_dir" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+link_re = re.compile(r'\[[^\]]*\]\(([^)]+)\)')
+
+for md in root.rglob('*.md'):
+    text = md.read_text(encoding='utf-8')
+    for m in link_re.finditer(text):
+        href = m.group(1)
+        if href.startswith('http') or href.startswith('#') or href.startswith('mailto:'):
+            continue
+        if ' ' in href:
+            href = href.split()[0]
+        target = (md.parent / href).resolve()
+        if not target.exists():
+            raise SystemExit(f"broken relative link in {md}: {href}")
+print("relative-link scan passed")
+PY
+pass "all relative Markdown links resolve"
+
 printf '%s\n' "VERIFY PASSED"
