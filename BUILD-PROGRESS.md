@@ -14,8 +14,8 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 ## Implementation tasks
 
 - [x] Task 1 — establish fork identity, attribution, and namespace
-- [ ] Task 2 — create isolated namespaced native roles and safe installer
-- [ ] Task 3 — implement Luna-first orchestration and routing policy
+- [x] Task 2 — create isolated namespaced native roles and safe installer
+- [x] Task 3 — implement Luna-first orchestration and routing policy
 - [ ] Task 4 — implement React production-delivery skill and packet integration
 - [ ] Task 5 — implement task/thread lifecycle and capability-gated archiving
 - [ ] Task 6 — implement optional Linear intake
@@ -46,7 +46,11 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 | Task 1 | `jq empty .agents/plugins/marketplace.json plugins/react-sol-advisor/.codex-plugin/plugin.json` | JSON parses | JSON OK | 0 | eee442e |
 | Task 1 | `git diff --check` | no whitespace errors | exit 0 | 0 | eee442e |
 | Task 1 | `git status --short` | only expected files staged | expected files staged | 0 | eee442e |
-| Task 2 | `sh plugins/react-sol-advisor/scripts/verify.sh` | role and installer checks pass | TBD | TBD | TBD |
+| Task 2 | `sh plugins/react-sol-advisor/scripts/verify.sh` | role and installer checks pass | VERIFY PASSED | 0 | e6602e7 |
+| Task 2 | `sh -n plugins/react-sol-advisor/scripts/*.sh` | shell syntax | passed | 0 | e6602e7 |
+| Task 2 | `python3 -c 'import tomllib; ...'` | TOML pins exact | two exact role pins are valid | 0 | e6602e7 |
+| Task 2 | `git diff --check` | no whitespace errors | exit 0 | 0 | e6602e7 |
+| Task 2 | `git diff --stat plugins/sol-advisor` | upstream untouched | no output | 0 | e6602e7 |
 
 ## Manual scenarios
 

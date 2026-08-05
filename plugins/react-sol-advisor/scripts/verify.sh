@@ -38,6 +38,28 @@ jq empty "$marketplace"
 [ "$(jq -r '.plugins[0].source.path' "$marketplace")" = './plugins/react-sol-advisor' ] || fail "marketplace plugin path is not ./plugins/react-sol-advisor"
 pass "marketplace JSON and identity"
 
+skill_md=$plugin_dir/skills/orchestration/SKILL.md
+model_routing=$plugin_dir/skills/orchestration/references/model-routing.md
+
+for f in "$skill_md" "$model_routing"; do
+  test -f "$f" || fail "missing $f"
+done
+
+for token in "ROUTING DECISION" "POLICY: economy" "RISK: green" "LANE: luna-app-task" "decomposed-mixed" "No silent fallback" "react_sol_advisor_terra_implementer" "react_sol_advisor_sol_reviewer" "Luna-first"; do
+  grep -Fq "$token" "$skill_md" || fail "SKILL.md missing $token"
+done
+
+for token in "economy" "balanced" "critical" "green" "amber" "red" "luna-app-task" "terra-native" "sol-parent-only" "decomposed-mixed"; do
+  grep -Fq "$token" "$model_routing" || fail "model-routing.md missing $token"
+done
+
+stale_skill=$(grep -E 'sol_advisor_' "$skill_md" | grep -vE 'react_sol_advisor_' || true)
+[ -z "$stale_skill" ] || fail "SKILL.md contains stale sol_advisor role names"
+
+stale_routing=$(grep -E 'sol_advisor_' "$model_routing" | grep -vE 'react_sol_advisor_' || true)
+[ -z "$stale_routing" ] || fail "model-routing.md contains stale sol_advisor role names"
+pass "routing contract covers policies, risk classes, lanes, and namespaced roles"
+
 python3 - "$template_dir" <<'PY'
 from pathlib import Path
 import sys, tomllib

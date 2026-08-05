@@ -1,6 +1,6 @@
 # Native Codex role contracts
 
-Use these contracts with Sol Advisor's namespaced, role-pinned native custom agents.
+Use these contracts with React Sol Advisor's namespaced, role-pinned native custom agents.
 They do not launch a nested Codex CLI or change global default-subagent routing. The
 separate [Luna task-lane contract](luna-task-lane.md) covers user-visible app tasks;
 it is not a native custom-agent role and must not be represented by a companion TOML.
@@ -13,8 +13,8 @@ complete steps 3-4 before accepting the result:
 
 1. Require the non-mutating companion check to prove both installed files exactly
    match current templates and the retired companion file is absent.
-2. Require native exposure of exactly `sol_advisor_terra_implementer` and
-   `sol_advisor_sol_reviewer`.
+2. Require native exposure of exactly `react_sol_advisor_terra_implementer` and
+   `react_sol_advisor_sol_reviewer`.
 3. Observe the selected role, model, and effort through public spawn/details metadata
    first, using the local runtime inspector only for omitted fields. Accept only
    Terra / High for implementation and Sol / High for review.
@@ -111,7 +111,7 @@ task-lane implementation path.
 Spawn exactly:
 
 ~~~text
-agent_type: sol_advisor_terra_implementer
+agent_type: react_sol_advisor_terra_implementer
 fork_turns: none
 ~~~
 
@@ -123,7 +123,7 @@ Prompt:
 
 ~~~text
 ROLE
-Act as Sol Advisor's sole implementation worker. Resolve the supplied specification
+Act as React Sol Advisor's sole implementation worker. Resolve the supplied specification
 within the settled architecture, preserve every stated interface and constraint, and
 surface ambiguity instead of redesigning the architecture.
 
@@ -135,7 +135,7 @@ surface ambiguity instead of redesigning the architecture.
 After parent verification, spawn a new native thread exactly:
 
 ~~~text
-agent_type: sol_advisor_sol_reviewer
+agent_type: react_sol_advisor_sol_reviewer
 fork_turns: none
 ~~~
 
