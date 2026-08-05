@@ -1,0 +1,21 @@
+{
+  "name": "react-sol-advisor",
+  "version": "0.1.0",
+  "description": "Luna-first React delivery for Codex with explicit Terra / High escalation and fresh Sol review.",
+  "author": {"name": "Anders Gerner", "url": "https://github.com/AndersGerner"},
+  "homepage": "https://github.com/AndersGerner/react-sol-advisor#readme",
+  "repository": "https://github.com/AndersGerner/react-sol-advisor",
+  "license": "MIT",
+  "keywords": ["codex", "orchestration", "react", "nextjs", "expo", "multi-agent", "gpt-5.6"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "React Sol Advisor",
+    "shortDescription": "Route React work through Luna / Max, escalate to Terra / High, and verify before acceptance.",
+    "longDescription": "React Sol Advisor is a Luna-first React delivery orchestrator for Codex. GPT-5.6 Sol stays in the primary session for architecture, decomposition, verification, and acceptance. The default economy policy routes bounded React, Next.js, React Native, and Expo work through user-visible GPT-5.6 Luna / Max app tasks. The balanced and critical policies escalate to a separately installed GPT-5.6 Terra / High native role and require a fresh Sol review for red or high-blast-radius work. Optional Linear intake is read-only and never a hard dependency.",
+    "developerName": "Anders Gerner",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://github.com/AndersGerner/react-sol-advisor",
+    "defaultPrompt": ["For economy React work, route to Luna / Max and keep review in the parent task.", "For critical React work, keep architecture in Sol, route implementation through Terra / High, then require a fresh Sol review."]
+  }
+}

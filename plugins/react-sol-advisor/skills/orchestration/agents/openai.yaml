@@ -1,0 +1,4 @@
+interface:
+  display_name: "React Sol Advisor Orchestration"
+  short_description: "Luna-first React delivery; escalate to Terra / High and fresh Sol review when needed"
+  default_prompt: "Use $orchestration for React, Next.js, React Native, and Expo work. Default to economy (Luna / Max) for green tasks. For amber or red work, escalate to Terra / High and require a fresh Sol review. Do not silently substitute models, lanes, or tools. Optional Linear intake is read-only and never a hard dependency."
