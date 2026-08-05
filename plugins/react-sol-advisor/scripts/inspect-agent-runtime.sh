@@ -64,7 +64,7 @@ matches_file=''
 cleanup() {
   if [ -n "$matches_file" ] && [ -f "$matches_file" ]; then
     case "$matches_file" in
-      "$tmp_base"/sol-advisor-runtime.*)
+      "$tmp_base"/react-sol-advisor-runtime.*)
         rm -f "$matches_file"
         ;;
       *)
@@ -76,7 +76,7 @@ cleanup() {
 
 trap cleanup 0 HUP INT TERM
 
-matches_file=$(mktemp "$tmp_base/sol-advisor-runtime.XXXXXX") || fail "could not create a temporary match list."
+matches_file=$(mktemp "$tmp_base/react-sol-advisor-runtime.XXXXXX") || fail "could not create a temporary match list."
 
 # Match only the exact rollout filename suffix; do not inspect any rollout contents
 # until exactly one filename has been found.

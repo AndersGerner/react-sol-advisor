@@ -13,7 +13,7 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 
 ## Implementation tasks
 
-- [ ] Task 1 — establish fork identity, attribution, and namespace
+- [x] Task 1 — establish fork identity, attribution, and namespace
 - [ ] Task 2 — create isolated namespaced native roles and safe installer
 - [ ] Task 3 — implement Luna-first orchestration and routing policy
 - [ ] Task 4 — implement React production-delivery skill and packet integration
@@ -42,7 +42,11 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 | Baseline | `git remote -v` | `origin` and `upstream` both present | `origin -> https://github.com/AndersGerner/react-sol-advisor.git`, `upstream -> https://github.com/DannyMac180/sol-advisor.git` | 0 | |
 | Baseline | `sh plugins/sol-advisor/scripts/verify.sh` | baseline verifier output recorded before changes | `FAIL: manifest does not describe app-task routing` | 1 | |
 | Baseline | `git diff --check` | no whitespace errors | exit 0 | 0 | |
-| Task 1 | `cp -R plugins/sol-advisor plugins/react-sol-advisor` | new namespaced plugin directory | directory created | 0 | TBD |
+| Task 1 | `cp -R plugins/sol-advisor plugins/react-sol-advisor` | new namespaced plugin directory | directory created | 0 | eee442e |
+| Task 1 | `jq empty .agents/plugins/marketplace.json plugins/react-sol-advisor/.codex-plugin/plugin.json` | JSON parses | JSON OK | 0 | eee442e |
+| Task 1 | `git diff --check` | no whitespace errors | exit 0 | 0 | eee442e |
+| Task 1 | `git status --short` | only expected files staged | expected files staged | 0 | eee442e |
+| Task 2 | `sh plugins/react-sol-advisor/scripts/verify.sh` | role and installer checks pass | TBD | TBD | TBD |
 
 ## Manual scenarios
 
