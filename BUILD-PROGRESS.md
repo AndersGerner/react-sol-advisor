@@ -51,6 +51,8 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 | Task 2 | `python3 -c 'import tomllib; ...'` | TOML pins exact | two exact role pins are valid | 0 | e6602e7 |
 | Task 2 | `git diff --check` | no whitespace errors | exit 0 | 0 | e6602e7 |
 | Task 2 | `git diff --stat plugins/sol-advisor` | upstream untouched | no output | 0 | e6602e7 |
+| Task 3 | `sh plugins/react-sol-advisor/scripts/verify.sh` | routing and role contract checks pass | VERIFY PASSED | 0 | 79c77a5 |
+| Task 3 | `git diff --check` | no whitespace errors | exit 0 | 0 | 79c77a5 |
 
 ## Manual scenarios
 

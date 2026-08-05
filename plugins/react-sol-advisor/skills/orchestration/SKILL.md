@@ -58,6 +58,18 @@ The `LANE` field must be one of:
 - `decomposed-mixed` — Sol decomposes the task; green subparts go to Luna and the
   irreducible core goes to Terra.
 
+## React production-delivery contract
+
+All React, Next.js, React Native, Expo, and TypeScript implementation work must carry the
+[react-production-delivery](../react-production-delivery/SKILL.md) contract. The Luna
+packet or Terra specification must either load the skill with a guaranteed invocation
+or include the core rules inline. The contract is non-negotiable: a delegated React
+task cannot omit it.
+
+Load the Next.js, React Native/Expo, and testing/accessibility references conditionally
+based on the task. Do not apply generic framework advice without checking installed
+versions.
+
 ## Classify risk and choose a policy
 
 Use the green/amber/red criteria and common examples in

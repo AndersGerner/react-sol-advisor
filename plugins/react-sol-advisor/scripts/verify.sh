@@ -60,6 +60,32 @@ stale_routing=$(grep -E 'sol_advisor_' "$model_routing" | grep -vE 'react_sol_ad
 [ -z "$stale_routing" ] || fail "model-routing.md contains stale sol_advisor role names"
 pass "routing contract covers policies, risk classes, lanes, and namespaced roles"
 
+react_skill=$plugin_dir/skills/react-production-delivery/SKILL.md
+react_next=$plugin_dir/skills/react-production-delivery/references/nextjs.md
+react_native=$plugin_dir/skills/react-production-delivery/references/react-native-expo.md
+react_testing=$plugin_dir/skills/react-production-delivery/references/testing-accessibility.md
+
+for f in "$react_skill" "$react_next" "$react_native" "$react_testing"; do
+  test -f "$f" || fail "missing React production-delivery file: $f"
+done
+
+for token in "Pre-edit requirements" "Core implementation rules" "Conditional references" "Specialist skill selection" "Structured worker return"; do
+  grep -Fq "$token" "$react_skill" || fail "react-production-delivery/SKILL.md missing $token"
+done
+
+grep -Fq "react-production-delivery" "$skill_md" || fail "orchestration SKILL.md does not reference react-production-delivery"
+grep -Fq "../react-production-delivery/SKILL.md" "$skill_md" || fail "orchestration SKILL.md does not link to react-production-delivery"
+for token in "server components" "caching" "revalidation" "Serializable server-to-client props"; do
+  grep -Fq "$token" "$react_next" || fail "nextjs.md missing $token"
+done
+for token in "React Native" "Expo" "navigation" "offline" "Native module"; do
+  grep -Fq "$token" "$react_native" || fail "react-native-expo.md missing $token"
+done
+for token in "Testing contract" "Verification order" "Accessibility checklist"; do
+  grep -Fq "$token" "$react_testing" || fail "testing-accessibility.md missing $token"
+done
+pass "React production-delivery skill and references are present and covered"
+
 python3 - "$template_dir" <<'PY'
 from pathlib import Path
 import sys, tomllib
