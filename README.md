@@ -16,7 +16,8 @@ baseline SHA, and licensing are recorded in [UPSTREAM.md](UPSTREAM.md).
 - **Balanced**: green -> Luna / Max; amber -> Terra / High or explicitly bounded Luna
   subparts; red -> Terra / High plus fresh Sol review.
 - **Critical**: green -> Terra / High unless a purely mechanical Luna subtask is
-  explicit; amber/red -> Terra / High and mandatory fresh Sol review.
+  explicit; amber/red -> Terra / High. All critical work receives a mandatory fresh Sol
+  review.
 - **No silent fallback**: if a lane is unavailable, report the missing capability and
   require explicit authorization before switching to a more expensive lane.
 - **React production contract**: every delegated React task carries the core
@@ -153,8 +154,9 @@ sh plugins/react-sol-advisor/scripts/verify-contracts.sh
 git diff --check
 ```
 
-The GitHub Actions workflow runs the three verifier scripts on pushes to `main` and
-`feat/*` branches and on pull requests targeting `main`.
+The GitHub Actions workflow runs the three verifier scripts plus a base-to-head
+whitespace check on pushes to `main` and `feat/*` branches and on pull requests targeting
+`main`.
 
 The suite checks:
 
