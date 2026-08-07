@@ -11,57 +11,75 @@ baseline SHA, and licensing are recorded in [UPSTREAM.md](UPSTREAM.md).
 ## What it does
 
 - **Economy** (default): bounded green React work -> Luna / Max; amber work -> Sol
-decomposition with Luna subparts and Terra core; red work -> Terra / High plus fresh Sol
-review.
+  decomposition with Luna subparts and Terra core; red work -> Terra / High plus fresh
+  Sol review.
 - **Balanced**: green -> Luna / Max; amber -> Terra / High or explicitly bounded Luna
-subparts; red -> Terra / High plus fresh Sol review.
-- **Critical**: green -> Terra / High unless a purely mechanical Luna subtask is explicit;
-amber/red -> Terra / High and mandatory fresh Sol review.
+  subparts; red -> Terra / High plus fresh Sol review.
+- **Critical**: green -> Terra / High unless a purely mechanical Luna subtask is
+  explicit; amber/red -> Terra / High and mandatory fresh Sol review.
 - **No silent fallback**: if a lane is unavailable, report the missing capability and
-require explicit authorization before switching to a more expensive lane.
+  require explicit authorization before switching to a more expensive lane.
 - **React production contract**: every delegated React task carries the core
-production-delivery rules, with conditional Next.js, React Native/Expo, and
-testing/accessibility references.
+  production-delivery rules, with conditional Next.js, React Native/Expo, and
+  testing/accessibility references.
 - **Optional Linear intake**: read-only issue normalization when a connector is
-available; full plugin usability from pasted requirements when it is not.
+  available; full plugin usability from pasted requirements when it is not.
 - **Capability-gated archiving**: archive accepted child tasks only when a supported
-operation exists, otherwise return a safe `THREADS_READY_TO_ARCHIVE` list.
+  operation exists, otherwise return a safe `THREADS_READY_TO_ARCHIVE` list.
 
 ## Installation
 
-1. Clone this repository and add it as a local Codex marketplace entry:
+### Install from GitHub
 
-   ~~~sh
-   git clone https://github.com/AndersGerner/react-sol-advisor
-   # In Codex settings, register the marketplace at:
-   #   react-sol-advisor/.agents/plugins/marketplace.json
-   ~~~
+Add the repository as a Codex marketplace and install the plugin:
 
-2. Install the `react-sol-advisor` plugin from the marketplace. Upstream Sol Advisor may
-   remain installed as a separate plugin.
+```sh
+codex plugin marketplace add AndersGerner/react-sol-advisor --ref main
+codex plugin add react-sol-advisor@react-sol-advisor
+```
 
-3. Install the native companion custom-agent templates. The installer refuses to
-   overwrite modified, nonregular, or symlinked files, and it will not touch companion
-   files from the upstream Sol Advisor plugin.
+Upstream Sol Advisor may remain installed as a separate plugin.
 
-   ~~~sh
-   sh plugins/react-sol-advisor/scripts/install-agents.sh
-   ~~~
+### Install native companion roles when needed
 
-   Verify the installed templates match the shipped versions:
+Green Luna-only work does not require native companion roles. Install them when you
+want the Terra escalation lane or fresh Sol reviewer:
 
-   ~~~sh
-   sh plugins/react-sol-advisor/scripts/install-agents.sh --check
-   ~~~
+```sh
+plugin_dir="$(
+  codex plugin list --json |
+    jq -r '.installed[] |
+      select(.pluginId == "react-sol-advisor@react-sol-advisor") |
+      .source.path'
+)"
 
-4. Start a **fresh Codex task** so the native custom-agent discovery picks up the
-   `react_sol_advisor_terra_implementer` and `react_sol_advisor_sol_reviewer` roles.
+test -n "$plugin_dir"
+test -d "$plugin_dir"
 
-5. Validate the full plugin before use:
+sh "$plugin_dir/scripts/install-agents.sh"
+sh "$plugin_dir/scripts/install-agents.sh" --check
+```
 
-   ~~~sh
-   sh plugins/react-sol-advisor/scripts/verify.sh
-   ~~~
+The installer:
+
+- Installs only `react-sol-advisor-terra-implementer.toml` and
+  `react-sol-advisor-sol-reviewer.toml`.
+- Refuses modified, nonregular, symlinked, or partially unsafe destinations.
+- Rejects the unsupported `react-sol-advisor-luna-implementer.toml`; Luna remains an
+  app-task lane.
+- Leaves upstream `sol-advisor-*` companion files untouched.
+
+Start a **fresh Codex task** after installing or updating native roles so custom-agent
+discovery sees the current profiles.
+
+### Local checkout development
+
+```sh
+git clone https://github.com/AndersGerner/react-sol-advisor
+cd react-sol-advisor
+codex plugin marketplace add "$(pwd)"
+codex plugin add react-sol-advisor@react-sol-advisor
+```
 
 ## Usage
 
@@ -116,30 +134,48 @@ The fork installs two custom-agent TOML files with pinned models and reasoning e
 
 - `react_sol_advisor_terra_implementer` — GPT-5.6 Terra / High for the escalation
   implementation lane.
-- `react_sol_advisor_sol_reviewer` — GPT-5.6 Sol / High, read-only, for fresh final
-  review.
+- `react_sol_advisor_sol_reviewer` — GPT-5.6 Sol / High, requested read-only, for fresh
+  final review.
 
-Do not add per-spawn model or reasoning overrides. Verify the actual role, model, effort,
-sandbox, and permission profile before accepting native results.
+Do not add per-spawn model or reasoning overrides. Verify the actual role, model,
+effort, sandbox, and permission profile before accepting native results. The host may
+broaden the reviewer's requested sandbox; the parent must apply the behavioral
+read-only rules in the orchestration contract rather than claiming enforced isolation.
 
 ## Verification
 
-Run the repository verifier before accepting the build:
+Run the complete local verification suite before accepting changes:
 
 ```sh
 sh plugins/react-sol-advisor/scripts/verify.sh
+sh plugins/react-sol-advisor/scripts/verify-hardening.sh
+sh plugins/react-sol-advisor/scripts/verify-contracts.sh
+git diff --check
 ```
 
-The script checks manifests, TOML role pins, shell syntax, installer safety, runtime
-inspector behavior, routing contract coverage, React production-delivery references, Luna
-lifecycle and archiving, Linear intake, stale identifiers, and relative-link existence.
+The GitHub Actions workflow runs the three verifier scripts on pushes to `main` and
+`feat/*` branches and on pull requests targeting `main`.
+
+The suite checks:
+
+- Manifest and marketplace identity
+- Exact TOML role pins
+- Installer path, symlink, conflict, rollback, and retired-Luna safety
+- Runtime role/model/effort validation and observed isolation evidence
+- Routing and React production-delivery contracts
+- Luna lifecycle, correction, PR, and archiving boundaries
+- Optional Linear intake
+- Stale identifiers and relative Markdown links
 
 ## Troubleshooting
 
-- **Missing Luna app-task tools**: the plugin stops the Luna lane and reports the missing
-  capability. Provide explicit authorization before switching to Terra.
+- **Missing Luna app-task tools**: the plugin stops the Luna lane and reports the
+  missing capability. Provide explicit authorization before switching to Terra.
 - **Stale native roles**: run `install-agents.sh --check` to detect missing, stale, or
   conflicting role files.
+- **Retired native Luna file**: remove the namespaced
+  `react-sol-advisor-luna-implementer.toml` manually; the installer will not delete a
+  user-owned file.
 - **Linear unavailable**: continue from pasted requirements; the plugin reports
   `LINEAR: unavailable; proceeded from supplied requirements`.
 - **No archive operation**: the parent returns a `THREADS_READY_TO_ARCHIVE` list instead
