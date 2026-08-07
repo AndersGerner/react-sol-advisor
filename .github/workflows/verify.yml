@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Run repository verifier
         run: sh plugins/react-sol-advisor/scripts/verify.sh
@@ -24,3 +26,6 @@ jobs:
 
       - name: Run orchestration contract checks
         run: sh plugins/react-sol-advisor/scripts/verify-contracts.sh
+
+      - name: Check whitespace in the branch change set
+        run: git diff --check origin/main...HEAD
