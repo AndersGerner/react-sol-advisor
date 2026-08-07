@@ -7,6 +7,7 @@ pass() { printf '%s\n' "PASS: $*"; }
 failures=0
 record_failure() {
   printf '%s\n' "FAIL: $*" >&2
+  printf '%s\n' "::error::$*" >&2
   failures=$((failures + 1))
 }
 
