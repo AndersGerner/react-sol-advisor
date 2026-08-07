@@ -19,8 +19,7 @@ contract, escalation triggers, and PR policy.
 Read [references/role-contracts.md](references/role-contracts.md) before the first
 native delegation. Read [references/model-routing.md](references/model-routing.md)
 before the first classification. Read
-[references/luna-task-lane.md](references/luna-task-lane.md) before any explicitly
-authorized Luna task.
+[references/luna-task-lane.md](references/luna-task-lane.md) before any Luna task.
 
 ## Confirm the primary session
 
@@ -52,7 +51,7 @@ PR POLICY: none | commit-only | draft-after-acceptance
 
 The `LANE` field must be one of:
 
-- `luna-app-task` — user-visible Codex app task for green economy work.
+- `luna-app-task` — user-visible Codex app task for policy-selected green work.
 - `terra-native` — native custom-agent spawn for implementation or review.
 - `sol-parent-only` — keep all work in the primary Sol session.
 - `decomposed-mixed` — Sol decomposes the task; green subparts go to Luna and the
@@ -159,7 +158,7 @@ Keep these responsibilities in the primary session:
 
 - Resolve requirements and material ambiguity.
 - Choose architecture, interfaces, and decomposition.
-- Write the complete five-part native specification or the complete Luna task packet.
+- Write the complete native implementation specification or the complete Luna task packet.
 - Inspect the actual diff and rerun verification.
 - Judge reviewer feedback or Luna-task findings and accept the deliverable.
 - Emit the route decision and require confirmation for policy changes.
@@ -221,15 +220,16 @@ see [references/thread-lifecycle.md](references/thread-lifecycle.md).
 For amber economy work, the parent decomposes the task into the largest green subparts
 and the irreducible amber core. Route each green subpart through a Luna app task with
 its own ownership and verification. Route the irreducible amber core through Terra /
-High. The `LANE` is `decomposed-mixed`. Each child receives its own bounded five-part
+High. The `LANE` is `decomposed-mixed`. Each child receives its own bounded native
 specification or Luna packet. The parent accepts each part independently and reruns
 verification before final acceptance.
 
 ## Route Terra / High implementation
 
-Use the Terra / High native lane for red economy work, all balanced work that is not
-explicitly decomposed to Luna, and all critical work. There is no second native
-implementation or fallback lane.
+Use the Terra / High native lane for red economy work, balanced amber or red work that
+is not explicitly decomposed to Luna, and critical work except explicitly identified
+purely mechanical Luna subtasks. Balanced green work remains in the Luna lane. There is
+no second native implementation or fallback lane.
 
 Spawn exactly:
 
