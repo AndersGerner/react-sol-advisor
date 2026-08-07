@@ -94,9 +94,9 @@ esac
 IFS= read -r rollout_file < "$matches_file" || fail "could not read the matched rollout filename."
 [ -f "$rollout_file" ] || fail "matched rollout is unavailable."
 
-# The jq program reads only the matched JSONL, validates the exact namespaced role and
-# its pinned model/effort/sandbox, and constructs a new allowlisted object. It rejects
-# absent, conflicting, or mismatched routing values instead of inferring them.
+# Model and effort are role pins. Sandbox and permission profile are observed runtime
+# evidence: the host may broaden the reviewer's requested read-only sandbox, and the
+# parent contract decides whether behavioral read-only review is acceptable.
 role_pins='{
   "react_sol_advisor_terra_implementer": {
     "model": "gpt-5.6-terra",
@@ -104,8 +104,7 @@ role_pins='{
   },
   "react_sol_advisor_sol_reviewer": {
     "model": "gpt-5.6-sol",
-    "effort": "high",
-    "sandbox_policy_type": "read-only"
+    "effort": "high"
   }
 }'
 
@@ -144,6 +143,12 @@ if ! jq -ce -s \
       error("missing model")
     elif any($efforts[]; . == null or . == "") then
       error("missing effort")
+    elif any($sandbox_types[]; . == null or . == "") then
+      error("missing sandbox policy type")
+    elif any($permission_types[]; . == null or . == "") then
+      error("missing permission profile type")
+    elif any($cwds[]; . == null or . == "") then
+      error("missing working directory")
     elif ($models | unique | length) != 1 then
       error("conflicting models")
     elif ($efforts | unique | length) != 1 then
@@ -158,8 +163,6 @@ if ! jq -ce -s \
       error("model \($models[0]) does not match role pin for \($agent_role)")
     elif $efforts[0] != $expected_pins[$agent_role].effort then
       error("effort \($efforts[0]) does not match role pin for \($agent_role)")
-    elif ($expected_pins[$agent_role].sandbox_policy_type // null) != null and $sandbox_types[0] != $expected_pins[$agent_role].sandbox_policy_type then
-      error("sandbox policy type \($sandbox_types[0]) does not match role pin for \($agent_role)")
     else
       {
         thread_id: $session_thread_id,
