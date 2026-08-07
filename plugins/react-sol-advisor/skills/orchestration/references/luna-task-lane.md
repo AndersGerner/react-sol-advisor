@@ -1,4 +1,4 @@
-# Luna task and thread lifecycle
+# Luna task-lane contract
 
 ## 1. Scope
 
@@ -21,7 +21,7 @@ send_message_to_thread
 
 Use the actual exposed schemas. Require accepted routing for `gpt-5.6-luna` with `max` thinking. When any required capability is unavailable, stop the Luna lane without silent fallback.
 
-Archive behavior has a separate optional gate; see section 10.
+Archive behavior has a separate optional gate; see [thread-lifecycle.md](thread-lifecycle.md).
 
 ## 3. Project and environment selection
 
@@ -151,50 +151,10 @@ PR AUTHORIZED FOR <real-thread-id>
 4. Parent records concrete returned URL plus branch and commit evidence.
 5. A dependent task starts only after the prior accepted base exists and is recorded.
 
-## 10. Capability-gated archiving
-
-Archiving is optional cleanup, not a correctness prerequisite.
-
-### Supported archive operation exists
-
-- Inspect the real schema before calling it.
-- Archive only accepted child tasks with no unresolved correction.
-- Require branch/commit/PR evidence to be recorded first.
-- Capture returned success evidence.
-- Do not delete tasks.
-- Do not archive the active parent before its final handoff.
-
-### No supported archive operation exists
-
-Return:
-
-```text
-THREADS_READY_TO_ARCHIVE:
-- threadId: ...
-  hostId: ...
-  reason: accepted; branch/commit/PR recorded
-```
-
-Do not access undocumented app-server transport, local databases, session files, or task storage to simulate archive behavior.
-
-## 11. Concurrency and dependency rules
+## 10. Concurrency and dependency rules
 
 - Concurrent tasks require non-overlapping owned files/modules and no dependency.
 - Shared files, generated artifacts, lockfiles, migrations, schemas, and dependent stacks are serial unless the parent proves merge-safe ownership.
 - Each task has its own worktree/branch and reports the actual values.
 - A dependent task starts from an existing accepted branch/commit, never a guessed future branch.
 - Children do not merge, rebase, cherry-pick, or manipulate other stacks.
-
-## 12. Parent final return
-
-```text
-STATUS: complete | partial | blocked
-ROUTE: policy, risk, lane, and observed evidence
-TASKS: real identities and final states
-CHANGES: accepted file-by-file summary
-VERIFIED: parent-run commands and results
-GIT: base, branch, commit, status, PR
-CORRECTIONS: count and decisive fixes
-THREAD CLEANUP: archived with evidence | ready-to-archive list | none
-RESIDUAL RISK: material remaining risk, or none
-```

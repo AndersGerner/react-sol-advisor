@@ -110,6 +110,22 @@ grep -Fq "linear-intake.md" "$skill_md" || fail "orchestration SKILL.md does not
 grep -Fq "MISSING CAPABILITY: Linear issue read access" "$skill_md" || fail "orchestration SKILL.md missing fail-closed Linear response"
 pass "Luna task lifecycle and thread-lifecycle references are present"
 
+# Semantic contract checks (feedback-driven)
+role_contracts=$plugin_dir/skills/orchestration/references/role-contracts.md
+for token in "Green economy work uses the Luna task lane by default" "ACCEPTANCE CRITERIA" "REPOSITORY CONTEXT" "REACT QUALITY CONTRACT" "STRUCTURED RETURN"; do
+  grep -Fq "$token" "$role_contracts" || fail "role-contracts.md missing $token"
+done
+
+grep -Fq "Require fresh Sol review only at commitment boundaries" "$skill_md" || fail "orchestration SKILL.md missing conditional Sol review section"
+if grep -Fq "always spawn a new, fresh reviewer" "$skill_md"; then
+  fail "orchestration SKILL.md still requires unconditional fresh Sol review"
+fi
+
+grep -Fq "Fresh Sol review" "$model_routing" || fail "model-routing.md missing Fresh Sol review section"
+grep -Fq "This reference is a focused companion" "$thread_lifecycle" || fail "thread-lifecycle.md must point to luna-task-lane.md as canonical"
+grep -Fq "# Luna task-lane contract" "$luna_lane" || fail "luna-task-lane.md title should mark it as the canonical lane contract"
+pass "semantic contract checks pass"
+
 python3 - "$template_dir" <<'PY'
 from pathlib import Path
 import sys, tomllib
@@ -251,6 +267,67 @@ if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" invalid >/dev/null
 zero_id=22222222-2222-7222-8222-222222222222
 if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$zero_id" >/dev/null 2>&1; then fail "runtime inspector accepted zero matches"; fi
 pass "runtime inspector routing and safe refusal"
+
+# Semantic failure matrix
+if sh "$installer" --target-dir "/nonexistent/a/../../.." >/dev/null 2>&1; then
+  fail "installer accepted path traversal to the root"
+fi
+pass "installer path traversal is rejected by canonical root guard"
+
+rollback_target=$tmp_dir/rollback
+mkdir "$rollback_target"
+fake_ln_dir=$tmp_dir/fake-bin
+mkdir "$fake_ln_dir"
+cat > "$fake_ln_dir/ln" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *sol-reviewer*) echo "SIMULATED FAILURE" >&2; exit 1 ;;
+esac
+exec /bin/ln "$@"
+EOF
+chmod +x "$fake_ln_dir/ln"
+if PATH="$fake_ln_dir:$PATH" sh "$installer" --target-dir "$rollback_target" >/dev/null 2>&1; then
+  fail "installer did not stop on simulated Sol installation failure"
+fi
+if [ -f "$rollback_target/$terra_file" ] || [ -f "$rollback_target/$sol_file" ]; then
+  fail "installer left partial files after a second-install failure"
+fi
+pass "installer rolls back partial install when the second file fails"
+
+runtime_invalid_dir=$runtime_sessions/2026/08/03
+mkdir -p "$runtime_invalid_dir"
+invalid_model_id=33333333-3333-7333-8333-333333333333
+invalid_sandbox_id=44444444-4444-7444-8444-444444444444
+unknown_role_id=55555555-5555-7555-8555-555555555555
+
+printf '%s\n' \
+  '{"type":"response_item","payload":{"prompt":"DO_NOT_LEAK"}}' \
+  "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$invalid_model_id\",\"parent_thread_id\":\"00000000-0000-7000-8000-000000000000\",\"agent_role\":\"react_sol_advisor_terra_implementer\",\"agent_path\":\"/root/fixture\",\"model_provider\":\"openai\",\"cwd\":\"/fixture\"}}" \
+  '{"type":"turn_context","payload":{"model":"gpt-5.6-sol","effort":"max","sandbox_policy":{"type":"danger-full-access"},"permission_profile":{"type":"disabled"},"cwd":"/fixture"}}' \
+  > "$runtime_invalid_dir/rollout-2026-08-03T00-00-00-$invalid_model_id.jsonl"
+
+printf '%s\n' \
+  '{"type":"response_item","payload":{"prompt":"DO_NOT_LEAK"}}' \
+  "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$invalid_sandbox_id\",\"parent_thread_id\":\"00000000-0000-7000-8000-000000000000\",\"agent_role\":\"react_sol_advisor_sol_reviewer\",\"agent_path\":\"/root/fixture\",\"model_provider\":\"openai\",\"cwd\":\"/fixture\"}}" \
+  '{"type":"turn_context","payload":{"model":"gpt-5.6-sol","effort":"high","sandbox_policy":{"type":"danger-full-access"},"permission_profile":{"type":"disabled"},"cwd":"/fixture"}}' \
+  > "$runtime_invalid_dir/rollout-2026-08-03T00-00-00-$invalid_sandbox_id.jsonl"
+
+printf '%s\n' \
+  '{"type":"response_item","payload":{"prompt":"DO_NOT_LEAK"}}' \
+  "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$unknown_role_id\",\"parent_thread_id\":\"00000000-0000-7000-8000-000000000000\",\"agent_role\":\"some_other_role\",\"agent_path\":\"/root/fixture\",\"model_provider\":\"openai\",\"cwd\":\"/fixture\"}}" \
+  '{"type":"turn_context","payload":{"model":"gpt-5.6-terra","effort":"high","sandbox_policy":{"type":"danger-full-access"},"permission_profile":{"type":"disabled"},"cwd":"/fixture"}}' \
+  > "$runtime_invalid_dir/rollout-2026-08-03T00-00-00-$unknown_role_id.jsonl"
+
+if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$invalid_model_id" >/dev/null 2>&1; then
+  fail "runtime inspector accepted Terra with Sol model"
+fi
+if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$invalid_sandbox_id" >/dev/null 2>&1; then
+  fail "runtime inspector accepted Sol reviewer with non-read-only sandbox"
+fi
+if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$unknown_role_id" >/dev/null 2>&1; then
+  fail "runtime inspector accepted unrecognized agent role"
+fi
+pass "runtime inspector rejects invalid role/model/effort/sandbox combinations"
 
 # Stale-identifier scan (only tracked files)
 stale_exceptions="

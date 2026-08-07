@@ -26,11 +26,20 @@ pinned by custom-agent TOML, so omit native per-spawn overrides.
 
 ## Shared implementation contract
 
-Every Terra prompt must contain all five sections:
+Every Terra prompt must contain all required sections. The React production-delivery
+contract is non-negotiable for React, Next.js, React Native, Expo, and TypeScript work.
 
 ~~~text
 OBJECTIVE
-<Observable outcome and why it matters.>
+Observable user outcome, why it matters, and the final acceptance condition.
+
+ACCEPTANCE CRITERIA
+Numbered user-visible and regression requirements, including loading/error/empty and
+accessibility behavior where applicable.
+
+REPOSITORY CONTEXT
+Actual framework/library versions, applicable repository instructions/AGENTS.md, canonical
+example paths, and any relevant architecture or state conventions.
 
 FILES AND OWNERSHIP
 You own only:
@@ -43,8 +52,18 @@ Do not modify files outside your ownership.
 INTERFACES
 - <Signatures, types, schemas, commands, or behavior that must remain compatible.>
 
+REACT QUALITY CONTRACT
+Follow the contract in
+[react-production-delivery](../../react-production-delivery/SKILL.md)
+and load the Next.js, React Native/Expo, and testing/accessibility references when the
+task involves those areas. Apply the pre-edit requirements, core implementation rules,
+verification order, and structured return. Do not apply generic framework advice without
+checking installed versions.
+
 CONSTRAINTS
 - <Repository conventions, safety boundaries, excluded scope, and settled decisions.>
+- Do not redesign architecture, modify outside ownership, push, or create/update a PR
+  without explicit parent authorization.
 
 VERIFICATION
 - Run: <exact command>
@@ -52,27 +71,32 @@ VERIFICATION
 - Inspect: <exact file, diff, or generated artifact>
   Success: <concrete expected evidence>
 
-RETURN
-Return exact commands and actual evidence. A completion claim without evidence is invalid.
+STRUCTURED RETURN
+Use the React production-delivery structured return and include:
 
-IMPLEMENTATION REPORT
 STATUS: complete | partial | blocked
-OBJECTIVE: <one-line restatement>
-CHANGES: <file-by-file summary from the actual diff>
-VERIFIED: <exact commands plus concrete output evidence>
-JUDGMENT CALLS: <decisions the specification left open, or none>
-GAPS: <unfinished work, ambiguity, or none>
+OBJECTIVE: one-line restatement
+ACCEPTANCE: each numbered criterion with evidence
+CANONICAL EXAMPLES: exact paths used
+CHANGES: file-by-file actual diff summary
+TESTS: test cases added/changed
+VERIFIED: exact commands and concrete results
+GIT: branch, base, status, changed files, commit SHA if any
+PR: not authorized | authorized | URL with evidence
+JUDGMENT CALLS: none or exact decisions
+GAPS: none or exact blockers
 ~~~
 
 The primary session must inspect the diff and rerun verification itself.
 
 ## Luna task lane - separate user-visible app tasks
 
-Use this contract only after the user's current request explicitly authorizes the Luna
-task lane. It is outside native subagent V2: use `list_projects`, `list_threads`,
-`create_thread`, `wait_threads`, `read_thread`, and `send_message_to_thread` as needed;
-never use `spawn_agent` for the child and never require a Luna companion TOML. If the required
-app tools, GPT-5.6 Luna, or Max reasoning are unavailable, stop without fallback.
+Green economy work uses the Luna task lane by default. It is outside native subagent V2:
+use `list_projects`, `list_threads`, `create_thread`, `wait_threads`, `read_thread`, and
+`send_message_to_thread` as needed; never use `spawn_agent` for the child and never require
+a Luna companion TOML. If the required app tools, GPT-5.6 Luna, or Max reasoning are
+unavailable, stop without fallback. The user can still override the policy or lane at any
+time.
 
 Call `list_projects` first and choose the project from its returned `projectId` and
 `isGitRepository`. Use `create_thread` with the Git project's default isolated
@@ -126,6 +150,11 @@ ROLE
 Act as React Sol Advisor's sole implementation worker. Resolve the supplied specification
 within the settled architecture, preserve every stated interface and constraint, and
 surface ambiguity instead of redesigning the architecture.
+
+For React, Next.js, React Native, Expo, or TypeScript work, the React production-delivery
+contract is mandatory. Load it from
+[react-production-delivery](../../react-production-delivery/SKILL.md)
+and apply the selected platform/testing references conditionally.
 
 <paste and complete the Shared implementation contract>
 ~~~

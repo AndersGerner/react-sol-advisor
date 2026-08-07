@@ -111,7 +111,22 @@ For amber work, `decomposed-mixed` is preferred over sending the entire task to 
 | Amber | Terra / High plus fresh Sol reviewer when consequential |
 | Red | Sol architecture, Terra / High implementation, mandatory fresh Sol reviewer |
 
-## 7. Luna escalation triggers
+## 7. Fresh Sol review
+
+A fresh native Sol reviewer is required after Terra implementation when:
+
+- The risk class is **red**.
+- The policy is **critical**.
+- An **amber** task touches a consequential commitment boundary, such as a public API,
+  authentication/authorization, migrations, database schema, irreversible data operation,
+  generated contract, or broad cross-package refactor.
+
+A fresh Sol review is **not** required for routine green Terra work or for
+non-consequential amber implementation that the primary Sol session can accept after
+inspecting the diff and rerunning verification. Do not invoke a fresh reviewer merely
+for reassurance.
+
+## 8. Luna escalation triggers
 
 A Luna worker must stop and return `blocked` or `partial` rather than improvising when:
 

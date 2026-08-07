@@ -265,10 +265,22 @@ reasoning fields. Observe actual routing, sandbox, and permission metadata. The 
 session remains responsible for the decision. Do not route the Luna task lane through
 this native reviewer.
 
-## Require the final Sol review for the native lane
+## Require fresh Sol review only at commitment boundaries
 
-After native implementation and parent verification, always spawn a new, fresh
-reviewer:
+A fresh native Sol review is required after Terra implementation only when the work
+crosses a commitment boundary or the risk class demands it:
+
+- **Red** work in any policy.
+- **Critical** work by definition.
+- **Amber** work in `balanced` or irreducible `economy` core when it touches
+  consequential boundaries such as public API, authentication/authorization,
+  migrations, irreversible data operations, broad refactors, or cross-package
+  contracts.
+- Routine green or non-consequential amber Terra work is accepted by the primary Sol
+  session after diff inspection and verification. Do not spawn a fresh Sol reviewer
+  merely for reassurance.
+
+When a fresh review is required, spawn exactly:
 
 ~~~text
 agent_type: react_sol_advisor_sol_reviewer

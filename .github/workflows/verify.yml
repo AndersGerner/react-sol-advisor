@@ -1,0 +1,17 @@
+name: Verify
+
+on:
+  push:
+    branches: ["main", "feat/*"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run repository verifier
+        run: sh plugins/react-sol-advisor/scripts/verify.sh

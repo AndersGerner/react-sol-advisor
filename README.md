@@ -29,20 +29,39 @@ operation exists, otherwise return a safe `THREADS_READY_TO_ARCHIVE` list.
 
 ## Installation
 
-1. Add this repository as a local Codex marketplace entry, or clone it and point Codex at
-   `.agents/plugins/marketplace.json`.
-2. Install the plugin under its own ID: `react-sol-advisor`.
-3. Upstream Sol Advisor may remain installed as a separate plugin.
-4. To use the native Terra / High or fresh Sol review lanes, run the companion installer
-   and start a fresh Codex task so the custom-agent templates are discovered:
+1. Clone this repository and add it as a local Codex marketplace entry:
+
+   ~~~sh
+   git clone https://github.com/AndersGerner/react-sol-advisor
+   # In Codex settings, register the marketplace at:
+   #   react-sol-advisor/.agents/plugins/marketplace.json
+   ~~~
+
+2. Install the `react-sol-advisor` plugin from the marketplace. Upstream Sol Advisor may
+   remain installed as a separate plugin.
+
+3. Install the native companion custom-agent templates. The installer refuses to
+   overwrite modified, nonregular, or symlinked files, and it will not touch companion
+   files from the upstream Sol Advisor plugin.
 
    ~~~sh
    sh plugins/react-sol-advisor/scripts/install-agents.sh
    ~~~
 
-   This installs `react-sol-advisor-terra-implementer.toml` and
-   `react-sol-advisor-sol-reviewer.toml` side-by-side with any existing upstream
-   companion files, refusing to overwrite modified or symlinked targets.
+   Verify the installed templates match the shipped versions:
+
+   ~~~sh
+   sh plugins/react-sol-advisor/scripts/install-agents.sh --check
+   ~~~
+
+4. Start a **fresh Codex task** so the native custom-agent discovery picks up the
+   `react_sol_advisor_terra_implementer` and `react_sol_advisor_sol_reviewer` roles.
+
+5. Validate the full plugin before use:
+
+   ~~~sh
+   sh plugins/react-sol-advisor/scripts/verify.sh
+   ~~~
 
 ## Usage
 

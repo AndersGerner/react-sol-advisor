@@ -33,6 +33,22 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 | 2026-08-06 | Feature branch `feat/react-sol-advisor` from `154fd7ac` | `git checkout -b feat/react-sol-advisor` | All work is isolated from `main` |
 | 2026-08-06 | Marketplace file advertises `react-sol-advisor` only | `.agents/plugins/marketplace.json` is the local-marketplace root for this checkout | Upstream `plugins/sol-advisor/` remains untouched and can still be installed from its own repo |
 
+## PR feedback corrections
+
+Addressing the `FIX-FIRST` review on https://github.com/AndersGerner/react-sol-advisor/pull/1:
+
+- [x] Fresh Sol review is now conditional on red/critical/consequential amber boundaries.
+- [x] Terra shared contract now includes acceptance criteria, repository context, React quality contract, and structured return.
+- [x] Installer root guard uses canonical `abspath`/`normpath` and rejects traversal to the filesystem root.
+- [x] Installer rolls back newly installed files if the second install fails.
+- [x] Runtime inspector enforces exact namespaced roles and their pinned model/effort/sandbox.
+- [x] Verifier now covers the semantic failure matrix for the above.
+- [x] `role-contracts.md` no longer requires explicit Luna opt-in; green economy uses Luna by default.
+- [x] Lifecycle SSoT split: `luna-task-lane.md` is the canonical lane contract; `thread-lifecycle.md` is a focused archiving/final-return companion.
+- [x] README installation steps are now actionable with exact commands, `--check`, and validation.
+- [x] Independent `.github/workflows/verify.yml` added for CI evidence.
+- [ ] Fresh final review (`SHIP`) still required from a human or separate Codex task before merge.
+
 ## Verification log
 
 | Task | Command | Expected | Actual result | Exit | Commit SHA |
@@ -57,6 +73,8 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 | Task 3 | `git diff --check` | no whitespace errors | exit 0 | 0 | 79c77a5 |
 | Task 4 | `sh plugins/react-sol-advisor/scripts/verify.sh` | React contract checks pass | VERIFY PASSED | 0 | 893eeb9 |
 | Task 4 | `git diff --check` | no whitespace errors | exit 0 | 0 | 893eeb9 |
+| PR feedback | `sh plugins/react-sol-advisor/scripts/verify.sh` | all blocking fixes: installer traversal/rollback, runtime pins, conditional Sol review, Terra React packet, Luna default, lifecycle SSoT, semantic failure matrix | VERIFY PASSED | 0 | TBD |
+| PR feedback | `git diff --check` | no whitespace errors | exit 0 | 0 | TBD |
 
 ## Manual scenarios
 
@@ -82,6 +100,8 @@ This file is an execution ledger. Replace example text with real evidence. Do no
 - [x] `git diff --check` passes
 - [x] No stale plugin or role identifiers remain outside attribution/migration documentation
 - [x] No placeholder text remains in plugin deliverables (examples retain illustrative placeholders)
+- [x] Independent GitHub Actions workflow `.github/workflows/verify.yml` configured
+- [ ] GitHub Actions workflow has not yet run on this head (will run after push)
 - [ ] Fresh reviewer verdict is `SHIP` — requires human or fresh Codex final review
 
 ## Final review

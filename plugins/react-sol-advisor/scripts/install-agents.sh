@@ -32,12 +32,22 @@ report_preflight_error() {
   preflight_failed=1
 }
 
+# Resolve .. and redundant path components so the root guard cannot be bypassed by
+# relative traversal. Symlinked target directories are still refused by preflight.
+canonicalize_path() {
+  python3 -c 'import os, sys; print(os.path.normpath(os.path.abspath(sys.argv[1])))' "$1"
+}
+
 path_exists() {
   [ -e "$1" ] || [ -L "$1" ]
 }
 
 sha256_file() {
-  shasum -a 256 "$1" 2>/dev/null | awk 'NF >= 1 && length($1) == 64 { print $1; exit }'
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" 2>/dev/null | awk 'NF >= 1 && length($1) == 64 { print $1; exit }'
+  else
+    shasum -a 256 "$1" 2>/dev/null | awk 'NF >= 1 && length($1) == 64 { print $1; exit }'
+  fi
 }
 
 classify_destination() {
@@ -88,6 +98,7 @@ install_missing() {
   fi
 
   rm -f "$staged" || fail "could not remove staged template after installation: $staged"
+  newly_installed_files="$newly_installed_files $destination"
   printf '%s\n' "INSTALLED: $destination"
 }
 
@@ -133,9 +144,23 @@ case "$target_dir" in
   *) target_dir=$(pwd -P)/$target_dir ;;
 esac
 
-case "$target_dir" in
-  /|//) fail "refusing to use the filesystem root as an agent target directory." ;;
-esac
+target_dir=$(canonicalize_path "$target_dir")
+
+[ "$target_dir" = "/" ] && fail "refusing to use the filesystem root as an agent target directory."
+[ "$target_dir" = "//" ] && fail "refusing to use the filesystem root as an agent target directory."
+
+# Track any newly installed files so we can roll them back if the second install fails.
+newly_installed_files=''
+install_aborted=0
+
+cleanup_install() {
+  if [ "$install_aborted" -eq 0 ]; then
+    for f in $newly_installed_files; do
+      rm -f "$f"
+    done
+  fi
+}
+trap cleanup_install 0 HUP INT TERM
 
 terra_file=react-sol-advisor-terra-implementer.toml
 sol_file=react-sol-advisor-sol-reviewer.toml
@@ -208,4 +233,5 @@ esac
 [ "$(classify_destination "$sol_destination" "$sol_template")" = current ] ||
   fail "post-install exactness check failed: $sol_destination"
 
+install_aborted=1
 printf '%s\n' "INSTALL PASSED: Terra and Sol exactly match $template_dir."

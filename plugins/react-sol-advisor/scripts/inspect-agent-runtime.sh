@@ -94,12 +94,28 @@ esac
 IFS= read -r rollout_file < "$matches_file" || fail "could not read the matched rollout filename."
 [ -f "$rollout_file" ] || fail "matched rollout is unavailable."
 
-# The jq program reads only the matched JSONL and constructs a new allowlisted object.
-# It rejects absent or conflicting required routing values instead of inferring them.
-if ! jq -ce -s --arg expected_thread_id "$thread_id" '
+# The jq program reads only the matched JSONL, validates the exact namespaced role and
+# its pinned model/effort/sandbox, and constructs a new allowlisted object. It rejects
+# absent, conflicting, or mismatched routing values instead of inferring them.
+role_pins='{
+  "react_sol_advisor_terra_implementer": {
+    "model": "gpt-5.6-terra",
+    "effort": "high"
+  },
+  "react_sol_advisor_sol_reviewer": {
+    "model": "gpt-5.6-sol",
+    "effort": "high",
+    "sandbox_policy_type": "read-only"
+  }
+}'
+
+if ! jq -ce -s \
+  --arg expected_thread_id "$thread_id" \
+  --argjson role_pins "$role_pins" '
   def string_or_null:
     if type == "string" then . else null end;
 
+  $role_pins as $expected_pins |
   [ .[] | select(.type == "session_meta") | .payload ] as $sessions |
   [ .[] | select(.type == "turn_context") | .payload ] as $turns |
   if ($sessions | length) != 1 then
@@ -122,6 +138,8 @@ if ! jq -ce -s --arg expected_thread_id "$thread_id" '
       error("session metadata does not identify the requested thread")
     elif $agent_role == null or $agent_role == "" then
       error("missing agent role")
+    elif ($expected_pins[$agent_role] // null) == null then
+      error("unrecognized agent role: \($agent_role)")
     elif any($models[]; . == null or . == "") then
       error("missing model")
     elif any($efforts[]; . == null or . == "") then
@@ -136,6 +154,12 @@ if ! jq -ce -s --arg expected_thread_id "$thread_id" '
       error("conflicting permission profile types")
     elif ($cwds | unique | length) != 1 then
       error("conflicting working directories")
+    elif $models[0] != $expected_pins[$agent_role].model then
+      error("model \($models[0]) does not match role pin for \($agent_role)")
+    elif $efforts[0] != $expected_pins[$agent_role].effort then
+      error("effort \($efforts[0]) does not match role pin for \($agent_role)")
+    elif ($expected_pins[$agent_role].sandbox_policy_type // null) != null and $sandbox_types[0] != $expected_pins[$agent_role].sandbox_policy_type then
+      error("sandbox policy type \($sandbox_types[0]) does not match role pin for \($agent_role)")
     else
       {
         thread_id: $session_thread_id,
