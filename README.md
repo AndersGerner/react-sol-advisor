@@ -67,7 +67,7 @@ The installer:
 - Refuses modified, nonregular, symlinked, or partially unsafe destinations.
 - Rejects the unsupported `react-sol-advisor-luna-implementer.toml`; Luna remains an
   app-task lane.
-- Leaves upstream `sol-advisor-*` companion files untouched.
+- Leaves upstream companion files untouched.
 
 Start a **fresh Codex task** after installing or updating native roles so custom-agent
 discovery sees the current profiles.
