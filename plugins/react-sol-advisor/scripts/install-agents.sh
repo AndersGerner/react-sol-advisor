@@ -43,8 +43,11 @@ import stat
 import sys
 
 path = os.path.abspath(sys.argv[1])
-if path == os.path.sep:
-    raise SystemExit("target resolves to the filesystem root")
+# POSIX gives exactly two leading slashes implementation-defined semantics, and Python
+# deliberately preserves them. The installer has no valid need for that namespace, so
+# reject it rather than allowing "//" to bypass the filesystem-root guard.
+if path == os.path.sep or path.startswith(os.path.sep * 2):
+    raise SystemExit("target resolves to the filesystem root or an ambiguous double-slash namespace")
 
 current = os.path.sep
 parts = [part for part in path.split(os.path.sep) if part]
