@@ -5,10 +5,13 @@ set -eu
 
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd) || exit 1
 plugin_dir=$(CDPATH= cd "$script_dir/.." && pwd) || exit 1
+repo_dir=$(CDPATH= cd "$plugin_dir/../.." && pwd) || exit 1
 skill=$plugin_dir/skills/orchestration/SKILL.md
 role_contracts=$plugin_dir/skills/orchestration/references/role-contracts.md
 model_routing=$plugin_dir/skills/orchestration/references/model-routing.md
 installer=$script_dir/install-agents.sh
+readme=$repo_dir/README.md
+workflow=$repo_dir/.github/workflows/verify.yml
 
 fail() {
   printf '%s\n' "FAIL: $*" >&2
@@ -16,7 +19,7 @@ fail() {
   exit 1
 }
 
-for required in "$skill" "$role_contracts" "$model_routing" "$installer"; do
+for required in "$skill" "$role_contracts" "$model_routing" "$installer" "$readme" "$workflow"; do
   [ -f "$required" ] || fail "missing contract file: $required"
 done
 
@@ -34,6 +37,21 @@ fi
 
 grep -Fq "balanced amber or red work" "$skill" ||
   fail "orchestration lacks an explicit balanced amber/red Terra boundary"
+
+# Critical mode is the deliberately expensive safety policy. Its summary table and
+# user-facing README must not imply that green or non-consequential amber work skips the
+# fresh reviewer required by the authoritative orchestration contract.
+grep -Eq '^\| Green \| Terra / High .*fresh Sol reviewer required' "$model_routing" ||
+  fail "critical green routing does not explicitly require a fresh Sol reviewer"
+grep -Fq '| Amber | Terra / High plus fresh Sol reviewer required |' "$model_routing" ||
+  fail "critical amber routing still makes the fresh reviewer conditional"
+grep -Fq 'All critical work receives a mandatory fresh Sol review.' "$readme" ||
+  fail "README does not state the critical-mode final-review guarantee"
+
+# CI must reproduce the whitespace gate claimed by the README and PR verification
+# packet, rather than relying on an unrecorded local command.
+grep -Fq 'git diff --check' "$workflow" ||
+  fail "GitHub Actions does not run git diff --check"
 
 # If the role contract claims a retired native Luna companion is absent, the installer
 # must actually reject that namespaced file. Otherwise the preflight statement is false.
