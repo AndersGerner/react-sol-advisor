@@ -10,6 +10,7 @@ skill=$plugin_dir/skills/orchestration/SKILL.md
 role_contracts=$plugin_dir/skills/orchestration/references/role-contracts.md
 model_routing=$plugin_dir/skills/orchestration/references/model-routing.md
 installer=$script_dir/install-agents.sh
+manifest=$plugin_dir/.codex-plugin/plugin.json
 readme=$repo_dir/README.md
 workflow=$repo_dir/.github/workflows/verify.yml
 
@@ -19,7 +20,7 @@ fail() {
   exit 1
 }
 
-for required in "$skill" "$role_contracts" "$model_routing" "$installer" "$readme" "$workflow"; do
+for required in "$skill" "$role_contracts" "$model_routing" "$installer" "$manifest" "$readme" "$workflow"; do
   [ -f "$required" ] || fail "missing contract file: $required"
 done
 
@@ -39,14 +40,16 @@ grep -Fq "balanced amber or red work" "$skill" ||
   fail "orchestration lacks an explicit balanced amber/red Terra boundary"
 
 # Critical mode is the deliberately expensive safety policy. Its summary table and
-# user-facing README must not imply that green or non-consequential amber work skips the
-# fresh reviewer required by the authoritative orchestration contract.
+# user-facing metadata must not imply that green or non-consequential amber work skips
+# the fresh reviewer required by the authoritative orchestration contract.
 grep -Eq '^\| Green \| Terra / High .*fresh Sol reviewer required' "$model_routing" ||
   fail "critical green routing does not explicitly require a fresh Sol reviewer"
 grep -Fq '| Amber | Terra / High plus fresh Sol reviewer required |' "$model_routing" ||
   fail "critical amber routing still makes the fresh reviewer conditional"
 grep -Fq 'All critical work receives a mandatory fresh Sol review.' "$readme" ||
   fail "README does not state the critical-mode final-review guarantee"
+jq -e '.interface.longDescription | contains("critical policy always requires a fresh Sol review")' "$manifest" >/dev/null ||
+  fail "plugin metadata does not state the critical-mode final-review guarantee"
 
 # CI must reproduce the whitespace gate claimed by the README and PR verification
 # packet, rather than relying on an unrecorded local command.
