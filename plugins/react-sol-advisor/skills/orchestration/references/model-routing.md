@@ -105,10 +105,13 @@ For amber work, `decomposed-mixed` is preferred over sending the entire task to 
 
 ### Critical
 
+Critical is the explicitly expensive safety policy. Every critical task receives a fresh
+Sol review after parent verification, even when the implementation itself is green.
+
 | Risk | Default route |
 |---|---|
-| Green | Terra / High unless the parent explicitly identifies a purely mechanical Luna subtask |
-| Amber | Terra / High plus fresh Sol reviewer when consequential |
+| Green | Terra / High plus fresh Sol reviewer required unless the parent identifies a purely mechanical Luna subtask |
+| Amber | Terra / High plus fresh Sol reviewer required |
 | Red | Sol architecture, Terra / High implementation, mandatory fresh Sol reviewer |
 
 ## 7. Fresh Sol review
@@ -121,10 +124,10 @@ A fresh native Sol reviewer is required after Terra implementation when:
   authentication/authorization, migrations, database schema, irreversible data operation,
   generated contract, or broad cross-package refactor.
 
-A fresh Sol review is **not** required for routine green Terra work or for
-non-consequential amber implementation that the primary Sol session can accept after
-inspecting the diff and rerunning verification. Do not invoke a fresh reviewer merely
-for reassurance.
+A fresh Sol review is **not** required for routine green Terra work outside critical
+policy or for non-consequential amber implementation that the primary Sol session can
+accept after inspecting the diff and rerunning verification. Do not invoke a fresh
+reviewer merely for reassurance.
 
 ## 8. Luna escalation triggers
 
