@@ -6,15 +6,21 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run repository verifier
         run: sh plugins/react-sol-advisor/scripts/verify.sh
 
       - name: Run focused hardening regressions
         run: sh plugins/react-sol-advisor/scripts/verify-hardening.sh
+
+      - name: Run orchestration contract checks
+        run: sh plugins/react-sol-advisor/scripts/verify-contracts.sh
