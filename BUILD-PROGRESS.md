@@ -73,8 +73,8 @@ Addressing the `FIX-FIRST` review on https://github.com/AndersGerner/react-sol-a
 | Task 3 | `git diff --check` | no whitespace errors | exit 0 | 0 | 79c77a5 |
 | Task 4 | `sh plugins/react-sol-advisor/scripts/verify.sh` | React contract checks pass | VERIFY PASSED | 0 | 893eeb9 |
 | Task 4 | `git diff --check` | no whitespace errors | exit 0 | 0 | 893eeb9 |
-| PR feedback | `sh plugins/react-sol-advisor/scripts/verify.sh` | all blocking fixes: installer traversal/rollback, runtime pins, conditional Sol review, Terra React packet, Luna default, lifecycle SSoT, semantic failure matrix | VERIFY PASSED | 0 | TBD |
-| PR feedback | `git diff --check` | no whitespace errors | exit 0 | 0 | TBD |
+| PR feedback | `sh plugins/react-sol-advisor/scripts/verify.sh` | all blocking fixes: installer traversal/rollback, runtime pins, conditional Sol review, Terra React packet, Luna default, lifecycle SSoT, semantic failure matrix | VERIFY PASSED | 0 | e4ce3be |
+| PR feedback | `git diff --check` | no whitespace errors | exit 0 | 0 | e4ce3be |
 
 ## Manual scenarios
 
