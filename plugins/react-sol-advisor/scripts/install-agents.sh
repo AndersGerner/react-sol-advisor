@@ -32,10 +32,35 @@ report_preflight_error() {
   preflight_failed=1
 }
 
-# Resolve .. and redundant path components so the root guard cannot be bypassed by
-# relative traversal. Symlinked target directories are still refused by preflight.
+# Normalize dot segments without following symlinks, then reject any existing symlink
+# in the target path. The final target may be missing, but every existing ancestor must
+# be a real directory. This keeps mkdir -p from escaping through a symlinked ancestor.
 canonicalize_path() {
-  python3 -c 'import os, sys; print(os.path.normpath(os.path.abspath(sys.argv[1])))' "$1"
+  python3 - "$1" <<'PY'
+import os
+import stat
+import sys
+
+path = os.path.abspath(sys.argv[1])
+if path == os.path.sep:
+    raise SystemExit("target resolves to the filesystem root")
+
+current = os.path.sep
+parts = [part for part in path.split(os.path.sep) if part]
+for index, part in enumerate(parts):
+    current = os.path.join(current, part)
+    try:
+        mode = os.lstat(current).st_mode
+    except FileNotFoundError:
+        break
+
+    if stat.S_ISLNK(mode):
+        raise SystemExit(f"target path contains a symlink: {current}")
+    if index < len(parts) - 1 and not stat.S_ISDIR(mode):
+        raise SystemExit(f"target ancestor is not a directory: {current}")
+
+print(path)
+PY
 }
 
 path_exists() {
@@ -77,6 +102,17 @@ same_state() {
   [ "$expected" = "$actual" ] || fail "$label changed after preflight; no further destination files were changed."
 }
 
+mark_installed_destination() {
+  destination=$1
+  if [ "$destination" = "$terra_destination" ]; then
+    terra_installed_this_run=1
+  elif [ "$destination" = "$sol_destination" ]; then
+    sol_installed_this_run=1
+  else
+    fail "refusing to track an unexpected installation destination: $destination"
+  fi
+}
+
 install_missing() {
   template=$1
   destination=$2
@@ -97,9 +133,29 @@ install_missing() {
     fail "destination changed after preflight and will not be overwritten: $destination"
   fi
 
+  # Mark immediately after the destination is created so the EXIT trap can roll it
+  # back even if later staging cleanup or the second installation fails.
+  mark_installed_destination "$destination"
+
   rm -f "$staged" || fail "could not remove staged template after installation: $staged"
-  newly_installed_files="$newly_installed_files $destination"
   printf '%s\n' "INSTALLED: $destination"
+}
+
+rollback_destination() {
+  label=$1
+  installed_this_run=$2
+  destination=$3
+  template=$4
+
+  [ "$installed_this_run" -eq 1 ] || return 0
+
+  if [ -f "$destination" ] && [ ! -L "$destination" ] && cmp -s "$template" "$destination"; then
+    if ! rm -f "$destination"; then
+      printf '%s\n' "ERROR: could not roll back $label destination: $destination" >&2
+    fi
+  else
+    printf '%s\n' "ERROR: refusing to roll back changed $label destination: $destination" >&2
+  fi
 }
 
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd) || exit 1
@@ -144,23 +200,9 @@ case "$target_dir" in
   *) target_dir=$(pwd -P)/$target_dir ;;
 esac
 
-target_dir=$(canonicalize_path "$target_dir")
-
-[ "$target_dir" = "/" ] && fail "refusing to use the filesystem root as an agent target directory."
-[ "$target_dir" = "//" ] && fail "refusing to use the filesystem root as an agent target directory."
-
-# Track any newly installed files so we can roll them back if the second install fails.
-newly_installed_files=''
-install_aborted=0
-
-cleanup_install() {
-  if [ "$install_aborted" -eq 0 ]; then
-    for f in $newly_installed_files; do
-      rm -f "$f"
-    done
-  fi
-}
-trap cleanup_install 0 HUP INT TERM
+if ! target_dir=$(canonicalize_path "$target_dir"); then
+  fail "unsafe target directory path"
+fi
 
 terra_file=react-sol-advisor-terra-implementer.toml
 sol_file=react-sol-advisor-sol-reviewer.toml
@@ -207,11 +249,28 @@ if [ "$check_only" -eq 1 ]; then
   exit 0
 fi
 
+target_dir_created_this_run=0
 if [ ! -d "$target_dir" ]; then
   mkdir -p "$target_dir" || fail "could not create target directory: $target_dir"
+  target_dir_created_this_run=1
 fi
 [ -d "$target_dir" ] && [ ! -L "$target_dir" ] ||
   fail "target directory changed after preflight: $target_dir"
+
+terra_installed_this_run=0
+sol_installed_this_run=0
+install_complete=0
+
+cleanup_install() {
+  if [ "$install_complete" -eq 0 ]; then
+    rollback_destination Sol "$sol_installed_this_run" "$sol_destination" "$sol_template"
+    rollback_destination Terra "$terra_installed_this_run" "$terra_destination" "$terra_template"
+    if [ "$target_dir_created_this_run" -eq 1 ]; then
+      rmdir "$target_dir" 2>/dev/null || true
+    fi
+  fi
+}
+trap cleanup_install 0 HUP INT TERM
 
 same_state Terra "$terra_state" "$(classify_destination "$terra_destination" "$terra_template")"
 same_state Sol "$sol_state" "$(classify_destination "$sol_destination" "$sol_template")"
@@ -233,5 +292,5 @@ esac
 [ "$(classify_destination "$sol_destination" "$sol_template")" = current ] ||
   fail "post-install exactness check failed: $sol_destination"
 
-install_aborted=1
+install_complete=1
 printf '%s\n' "INSTALL PASSED: Terra and Sol exactly match $template_dir."
