@@ -16,8 +16,7 @@ baseline SHA, and licensing are recorded in [UPSTREAM.md](UPSTREAM.md).
 - **Balanced**: green -> Luna / Max; amber -> Terra / High or explicitly bounded Luna
   subparts; red -> Terra / High plus fresh Sol review.
 - **Critical**: green -> Terra / High unless a purely mechanical Luna subtask is
-  explicit; amber/red -> Terra / High. All critical work receives a mandatory fresh Sol
-  review.
+  explicit; amber/red -> Terra / High. All critical work receives a mandatory fresh Sol review.
 - **No silent fallback**: if a lane is unavailable, report the missing capability and
   require explicit authorization before switching to a more expensive lane.
 - **React production contract**: every delegated React task carries the core
