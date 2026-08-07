@@ -15,3 +15,6 @@ jobs:
 
       - name: Run repository verifier
         run: sh plugins/react-sol-advisor/scripts/verify.sh
+
+      - name: Run focused hardening regressions
+        run: sh plugins/react-sol-advisor/scripts/verify-hardening.sh
