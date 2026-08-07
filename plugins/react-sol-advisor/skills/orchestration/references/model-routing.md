@@ -141,7 +141,7 @@ A Luna worker must stop and return `blocked` or `partial` rather than improvisin
 
 The parent then revises the packet, decomposes further, or routes the unresolved core to Terra. It must not send the unchanged prompt repeatedly.
 
-## 8. Cost controls
+## 9. Cost controls
 
 - Sol produces concise decision packets rather than implementation essays.
 - Do not paste entire issues, logs, or skill manuals when a normalized summary and exact references suffice.
@@ -152,7 +152,7 @@ The parent then revises the packet, decomposes further, or routes the unresolved
 - Create a fresh parent per issue or coherent feature stack rather than keeping an immortal orchestrator thread.
 - Do not invoke Terra or a fresh Sol reviewer merely for reassurance; require a policy trigger.
 
-## 9. No silent fallback
+## 10. No silent fallback
 
 When a chosen lane is unavailable:
 
