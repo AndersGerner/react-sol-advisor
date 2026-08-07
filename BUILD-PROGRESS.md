@@ -91,5 +91,6 @@ Reviewer task/thread: self-review only; fresh final review required before merge
 Base/head reviewed: feat/react-sol-advisor against 154fd7ac
 Verdict: self-review PASS; upstream untouched, verifier passes, focused per-task commits
 Verification rerun: sh plugins/react-sol-advisor/scripts/verify.sh -> VERIFY PASSED
+PR URL: https://github.com/AndersGerner/react-sol-advisor/pull/1
 Residual risk: fresh reviewer not available in this environment; no live Codex/Luna/Linear/Terra runtime exercised
 ```
