@@ -297,7 +297,7 @@ pass "installer rolls back partial install when the second file fails"
 runtime_invalid_dir=$runtime_sessions/2026/08/03
 mkdir -p "$runtime_invalid_dir"
 invalid_model_id=33333333-3333-7333-8333-333333333333
-invalid_sandbox_id=44444444-4444-7444-8444-444444444444
+broadened_sandbox_id=44444444-4444-7444-8444-444444444444
 unknown_role_id=55555555-5555-7555-8555-555555555555
 
 printf '%s\n' \
@@ -308,9 +308,9 @@ printf '%s\n' \
 
 printf '%s\n' \
   '{"type":"response_item","payload":{"prompt":"DO_NOT_LEAK"}}' \
-  "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$invalid_sandbox_id\",\"parent_thread_id\":\"00000000-0000-7000-8000-000000000000\",\"agent_role\":\"react_sol_advisor_sol_reviewer\",\"agent_path\":\"/root/fixture\",\"model_provider\":\"openai\",\"cwd\":\"/fixture\"}}" \
+  "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$broadened_sandbox_id\",\"parent_thread_id\":\"00000000-0000-7000-8000-000000000000\",\"agent_role\":\"react_sol_advisor_sol_reviewer\",\"agent_path\":\"/root/fixture\",\"model_provider\":\"openai\",\"cwd\":\"/fixture\"}}" \
   '{"type":"turn_context","payload":{"model":"gpt-5.6-sol","effort":"high","sandbox_policy":{"type":"danger-full-access"},"permission_profile":{"type":"disabled"},"cwd":"/fixture"}}' \
-  > "$runtime_invalid_dir/rollout-2026-08-03T00-00-00-$invalid_sandbox_id.jsonl"
+  > "$runtime_invalid_dir/rollout-2026-08-03T00-00-00-$broadened_sandbox_id.jsonl"
 
 printf '%s\n' \
   '{"type":"response_item","payload":{"prompt":"DO_NOT_LEAK"}}' \
@@ -321,13 +321,18 @@ printf '%s\n' \
 if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$invalid_model_id" >/dev/null 2>&1; then
   fail "runtime inspector accepted Terra with Sol model"
 fi
-if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$invalid_sandbox_id" >/dev/null 2>&1; then
-  fail "runtime inspector accepted Sol reviewer with non-read-only sandbox"
-fi
+broadened_output=$(sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$broadened_sandbox_id")
+printf '%s\n' "$broadened_output" | jq -e '
+  .agent_role == "react_sol_advisor_sol_reviewer"
+  and .model == "gpt-5.6-sol"
+  and .effort == "high"
+  and .sandbox_policy_type == "danger-full-access"
+  and .permission_profile_type == "disabled"
+' >/dev/null || fail "runtime inspector did not report broadened reviewer isolation"
 if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$unknown_role_id" >/dev/null 2>&1; then
   fail "runtime inspector accepted unrecognized agent role"
 fi
-pass "runtime inspector rejects invalid role/model/effort/sandbox combinations"
+pass "runtime inspector enforces role/model/effort and reports observed isolation"
 
 # Stale-identifier scan (only tracked files)
 stale_exceptions="
