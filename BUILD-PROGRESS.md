@@ -39,6 +39,7 @@ being represented as executed.
 | 2026-08-06 | Marketplace advertises `react-sol-advisor` only | `.agents/plugins/marketplace.json` | Upstream plugin remains separately installable |
 | 2026-08-07 | Treat model/effort as role pins and sandbox/permission as observed evidence | Reviewer sandbox can be broadened by the host | Inspector reports isolation; parent applies behavioral read-only policy |
 | 2026-08-07 | Reject a namespaced native Luna companion instead of deleting it | Luna is an app-task lane and installed files are user-owned | Installer fails closed with zero partial role installation |
+| 2026-08-07 | Treat critical as an explicitly expensive safety policy | Orchestration requires fresh Sol review for all critical work | Routing table, README, and plugin metadata now state the same guarantee |
 
 ## Review corrections
 
@@ -54,12 +55,14 @@ addressed:
 
 Additional hardening completed during the second review:
 
+- [x] Installer rejects the POSIX double-slash root alias before staging.
 - [x] Balanced green work remains on Luna; Terra receives balanced amber/red work.
 - [x] Expanded native packets are no longer described as “five-part.”
 - [x] Default policy-selected Luna work is not described as separately opt-in.
+- [x] Critical green/amber routing, README, and plugin metadata require fresh Sol review consistently.
 - [x] Routing reference numbering is sequential.
 - [x] README has copy-pasteable marketplace, plugin, companion, and verification commands.
-- [x] GitHub Actions uses `actions/checkout@v6` with `contents: read`.
+- [x] GitHub Actions uses `actions/checkout@v6`, `contents: read`, full history, and a base-to-head whitespace gate.
 
 ## Verification log
 
@@ -69,9 +72,12 @@ Additional hardening completed during the second review:
 | Repository verifier | `sh plugins/react-sol-advisor/scripts/verify.sh` | Pass |
 | Installer/runtime hardening | `sh plugins/react-sol-advisor/scripts/verify-hardening.sh` | Pass |
 | Routing contract consistency | `sh plugins/react-sol-advisor/scripts/verify-contracts.sh` | Pass |
-| Whitespace | `git diff --check` | Pass |
-| CI | GitHub Actions run `31163268977` at `df203634f312201798ced78561fa4f6c11127a3f` | Success |
-| Review | Independent second review of full PR plus repair delta | `SHIP` |
+| Whitespace | `git diff --check origin/main...HEAD` | Pass |
+| CI | GitHub Actions run `31166694732` at `55c57b9411441f1b768d567754fee576f12b9bfa` | All four gates passed |
+| Review | Independent second review of the full PR plus all repair deltas | `SHIP` |
+
+The implementation/content head reviewed was `55c57b9411441f1b768d567754fee576f12b9bfa`.
+This ledger update records evidence only and does not change plugin behavior.
 
 ## Manual scenarios
 
@@ -80,6 +86,7 @@ Additional hardening completed during the second review:
 | Bounded React component in economy mode | Luna / Max app task | Static routing and contract checks pass; live app-task tools unavailable in review environment |
 | Next.js cache/revalidation ambiguity | Sol decomposes; Luna-safe subparts and Terra core | Static amber/decomposed-mixed policy verified |
 | Auth or database contract change | Terra / High plus fresh Sol review | Static red/commitment-boundary policy verified |
+| Critical-mode implementation | Terra / High by default; mandatory fresh Sol review | Orchestration, routing table, README, metadata, and contract checks agree |
 | Luna app-task tools unavailable | Fail closed; no silent Terra fallback | Contract verified; live tool-unavailable path not exercised |
 | Linear connector unavailable | Continue from pasted requirements when sufficient | Contract verified; live connector path not exercised |
 | Archive operation unavailable | Return `THREADS_READY_TO_ARCHIVE` | Contract verified; live archive discovery not exercised |
@@ -94,9 +101,9 @@ Additional hardening completed during the second review:
 - [x] JSON manifests parse
 - [x] TOML role files parse and match exact pins
 - [x] Shell syntax checks pass
-- [x] `git diff --check` passes
+- [x] Base-to-head `git diff --check` passes
 - [x] No stale plugin or role identifiers remain outside intentional attribution/coexistence locations
-- [x] GitHub Actions passes on the reviewed head
+- [x] GitHub Actions passes on the reviewed implementation head
 - [ ] Codex skill validator — unavailable in this environment
 - [ ] Codex plugin validator — unavailable in this environment
 - [x] Fresh reviewer verdict is `SHIP`
@@ -104,10 +111,10 @@ Additional hardening completed during the second review:
 ## Final review
 
 ```text
-Reviewer: independent GPT-5.6 Pro review with GitHub diff, negative fixtures, and CI
-Base/head reviewed: 154fd7ac282088f58246e192347960ba0bfc945f..df203634f312201798ced78561fa4f6c11127a3f
+Reviewer: independent GPT-5.6 Pro review with GitHub diff inspection, failing regression tests, direct fixes, and CI
+Base/head reviewed: 154fd7ac282088f58246e192347960ba0bfc945f..55c57b9411441f1b768d567754fee576f12b9bfa
 Verdict: SHIP
-Verification: repository, hardening, and contract suites pass in GitHub Actions run 31163268977
-Residual risk: live Codex Luna/Terra/Sol task routing, Linear, and archive operations remain capability-dependent and were not exercised in this review environment
+Verification: repository, hardening, contract, and changed-range whitespace gates passed in GitHub Actions run 31166694732
+Residual risk: live Codex Luna/Terra/Sol task routing, Linear, archive operations, and official Codex validators remain capability-dependent and were not exercised in this review environment
 PR URL: https://github.com/AndersGerner/react-sol-advisor/pull/1
 ```
