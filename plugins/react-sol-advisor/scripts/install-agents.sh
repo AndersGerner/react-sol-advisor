@@ -8,8 +8,9 @@ usage() {
 Usage: install-agents.sh [--target-dir PATH] [--check]
 
 Install React Sol Advisor's two current custom-agent templates into the target directory.
-It never overwrites a modified, nonregular, or symlinked destination and never touches
-upstream sol-advisor-* files.
+It never overwrites a modified, nonregular, or symlinked destination, rejects the
+unsupported namespaced native Luna companion, and never touches upstream sol-advisor-*
+files.
 
 Without --target-dir, the target is "$CODEX_HOME/agents" when CODEX_HOME is already
 set, otherwise "$HOME/.codex/agents".
@@ -206,10 +207,12 @@ fi
 
 terra_file=react-sol-advisor-terra-implementer.toml
 sol_file=react-sol-advisor-sol-reviewer.toml
+luna_file=react-sol-advisor-luna-implementer.toml
 terra_template=$template_dir/$terra_file
 sol_template=$template_dir/$sol_file
 terra_destination=$target_dir/$terra_file
 sol_destination=$target_dir/$sol_file
+luna_destination=$target_dir/$luna_file
 
 for template in "$terra_template" "$sol_template"; do
   [ -f "$template" ] && [ ! -L "$template" ] ||
@@ -221,6 +224,10 @@ if path_exists "$target_dir"; then
   if [ -L "$target_dir" ] || [ ! -d "$target_dir" ]; then
     report_preflight_error "target directory is not a real directory: $target_dir"
   fi
+fi
+
+if path_exists "$luna_destination"; then
+  report_preflight_error "unsupported native Luna companion must be removed manually: $luna_destination"
 fi
 
 terra_state=$(classify_destination "$terra_destination" "$terra_template")
@@ -245,7 +252,7 @@ fi
 [ "$preflight_failed" -eq 0 ] || exit 1
 
 if [ "$check_only" -eq 1 ]; then
-  printf '%s\n' "CHECK PASSED: Terra and Sol exactly match $template_dir."
+  printf '%s\n' "CHECK PASSED: Terra and Sol exactly match $template_dir; native Luna is absent."
   exit 0
 fi
 
@@ -274,6 +281,8 @@ trap cleanup_install 0 HUP INT TERM
 
 same_state Terra "$terra_state" "$(classify_destination "$terra_destination" "$terra_template")"
 same_state Sol "$sol_state" "$(classify_destination "$sol_destination" "$sol_template")"
+[ ! -e "$luna_destination" ] && [ ! -L "$luna_destination" ] ||
+  fail "native Luna companion appeared after preflight: $luna_destination"
 
 case "$terra_state" in
   missing) install_missing "$terra_template" "$terra_destination" ;;
@@ -291,6 +300,8 @@ esac
   fail "post-install exactness check failed: $terra_destination"
 [ "$(classify_destination "$sol_destination" "$sol_template")" = current ] ||
   fail "post-install exactness check failed: $sol_destination"
+[ ! -e "$luna_destination" ] && [ ! -L "$luna_destination" ] ||
+  fail "native Luna companion appeared during installation: $luna_destination"
 
 install_complete=1
-printf '%s\n' "INSTALL PASSED: Terra and Sol exactly match $template_dir."
+printf '%s\n' "INSTALL PASSED: Terra and Sol exactly match $template_dir; native Luna is absent."
