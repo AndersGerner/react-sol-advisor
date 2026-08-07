@@ -40,6 +40,28 @@ tmp_dir=$(mktemp -d "$tmp_base/react-sol-advisor-hardening.XXXXXX") || {
   exit 1
 }
 
+# POSIX permits exactly two leading slashes to have implementation-defined semantics,
+# and Python preserves "//" during abspath normalization. Treat it as a root alias and
+# reject it before the installer reaches staging. A fake mktemp proves no write path ran.
+double_root_bin=$tmp_dir/double-root-bin
+double_root_marker=$tmp_dir/double-root-mktemp-invoked
+mkdir -p "$double_root_bin"
+cat > "$double_root_bin/mktemp" <<'EOF'
+#!/bin/sh
+: > "$RSA_DOUBLE_ROOT_MARKER"
+exit 1
+EOF
+chmod +x "$double_root_bin/mktemp"
+if RSA_DOUBLE_ROOT_MARKER="$double_root_marker" \
+  PATH="$double_root_bin:$PATH" \
+  sh "$installer" --target-dir // >/dev/null 2>&1; then
+  record_failure "installer accepted the double-slash filesystem root"
+elif [ -e "$double_root_marker" ]; then
+  record_failure "installer reached staging for the double-slash filesystem root"
+else
+  pass "installer rejects the double-slash filesystem root before staging"
+fi
+
 # A non-existing target below a symlinked ancestor must be refused. Merely normalizing
 # '..' components is insufficient because mkdir -p follows the ancestor symlink.
 symlink_root=$tmp_dir/symlink-root
