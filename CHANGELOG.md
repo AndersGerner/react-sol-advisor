@@ -11,6 +11,14 @@ All notable changes to React Sol Advisor will be documented in this file.
   when all five baseline app-task operations are exposed.
 - Defined latest-turn completion, readable handoff, active/completed acceptance,
   same-thread correction, exact-project registration, and explicit archive evidence.
+- Split the pre-creation child packet from the parent-owned lifecycle record so initial
+  task creation never depends on thread, host, worktree, monitoring, or turn values that
+  do not exist yet.
+- Grounded environment selection in the observed `projectKind` and
+  `supportsWorktrees` schema, with `{type: "worktree"}` allowed only when explicitly
+  supported.
+- Required every correction call to reassert `gpt-5.6-luna` with `thinking = max` and
+  record any returned routing metadata.
 
 ### Added
 

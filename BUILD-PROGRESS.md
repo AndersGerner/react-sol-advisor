@@ -172,3 +172,28 @@ React fork.
 
 The focused verifier also checks byte-identical SHA-256 values for both native role
 files, `install-agents.sh`, and `inspect-agent-runtime.sh` against the required base.
+
+### Review repair cycle
+
+The post-implementation Sol review found three contract defects: the initial packet
+required post-creation values, environment selection referenced an unexposed project
+field, and corrections did not explicitly reassert Luna / Max. The repair preserves the
+0.1.1 release scope and protected native subsystem.
+
+| Phase | Command / evidence | Result |
+|---|---|---|
+| Red | Added review regression checks to `verify-luna-thread-contracts.sh` before changing the contracts | Exit 1: `FAIL: initial child packet is phase-separated from the parent lifecycle record` |
+| Green | Same focused verifier after packet/lifecycle separation, schema-grounded environment selection, and correction-route pinning | Exit 0: `LUNA THREAD CONTRACTS PASSED` |
+
+Repair details:
+
+- The initial `create_thread` packet now contains only pre-creation project, environment,
+  base, ownership, interface, constraint, and verification data.
+- The parent lifecycle record is populated after creation with real thread, host,
+  worktree, monitoring, routing, and completed-turn evidence.
+- Environment selection uses returned `projectKind` and `supportsWorktrees`, independently
+  confirms Git/base state, and requests `{type: "worktree"}` only when explicitly
+  supported.
+- Every same-thread correction call explicitly supplies `model = gpt-5.6-luna` and
+  `thinking = max`, records returned routing metadata when present, and fails closed on a
+  contradictory route.

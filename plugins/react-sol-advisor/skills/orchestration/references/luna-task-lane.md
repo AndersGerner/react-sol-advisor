@@ -70,22 +70,35 @@ Archive behavior has a separate optional gate; see
 ## 3. Project registration and environment selection
 
 1. `list_projects` must return the exact current project for the intended repository
-   path. Select it from returned identity, never from a guessed title.
+   path. Select it from returned identity and path, never from a guessed title.
 2. When the intended path is absent, stop with this clear instruction: add or open the
    folder as a project in the Codex app and start a fresh task in that project.
 3. Do not invent a project ID, do not attempt Computer Use against the Codex app, and do
    not fall back to another repository or local environment.
-4. Inspect whether the returned project is a Git repository.
-5. For Git projects, use the supported default isolated child worktree environment.
-6. For non-Git projects, use the supported project-local environment.
-7. Record exact project ID, repository flag, base/starting state, and any returned child
-   worktree/branch metadata.
-8. Do not assume worktree isolation makes concurrent edits merge-safe.
+4. Inspect the actual returned schema from `list_projects` and the actual environment
+   schema exposed by `create_thread`. The currently proven project schema exposes
+   `projectKind` and `supportsWorktrees`; do not require, infer, or branch on
+   `isGitRepository`, which was absent from the recorded live schema.
+5. Record the returned `projectKind` and `supportsWorktrees` values verbatim.
+6. Independently confirm the repository's Git state and exact base/ref when needed. Do
+   not invent Git status from project metadata.
+7. Request `{type: "worktree"}` only when `supportsWorktrees == true` and the exposed
+   `create_thread` schema accepts that environment.
+8. When worktrees are not explicitly supported, use a project-local environment only if
+   the actual schema exposes a safe local option for the exact project and the parent can
+   establish a safe starting state. Otherwise fail closed.
+9. Record the exact project ID, returned project schema fields, requested environment,
+   independently confirmed base/starting state, and any post-creation worktree/branch
+   metadata in the parent lifecycle record.
+10. Do not assume worktree isolation makes concurrent edits merge-safe.
 
 ## 4. Complete Luna task packet
 
-Every Luna child receives a self-contained packet. It does not inherit the parent’s full
-conversation.
+### Pre-creation Luna child packet
+
+Every Luna child receives a self-contained packet through `create_thread`. It does not
+inherit the parent's full conversation. This packet contains only values known before
+creation.
 
 Required sections:
 
@@ -122,8 +135,9 @@ Settled decisions, safety boundaries, excluded scope, concurrency warning, and t
 required Luna / Max route.
 
 STARTING STATE / BASE
-Project identity, Git flag, environment, exact base/ref, child worktree/branch metadata,
-prior accepted stack when dependent, and existing real task identity for corrections.
+Exact project ID, returned projectKind and supportsWorktrees, requested environment,
+independently confirmed repository/Git state and exact base/ref, and prior accepted stack
+when dependent.
 
 VERIFICATION
 Exact focused and broader commands, expected successful evidence, and required diff or
@@ -135,13 +149,44 @@ create/update a PR before explicit parent authorization. Do not merge, rebase,
 cherry-pick, or alter another stack.
 
 STRUCTURED RETURN
-Use the schema in the React production contract plus real thread, host, completed-turn,
-child-worktree, and PR state.
+Use the schema in the React production contract. Report repository-observable state and
+verification, but do not invent thread, host, or completed-turn identities. The parent
+joins the child handoff with its lifecycle record.
 ```
 
-No placeholder may remain when the task is created.
+The initial `create_thread` prompt must not contain or require a real `threadId`,
+`hostId`, child-worktree or branch path, monitoring mode, or completed-turn ID. Those
+values do not exist until creation or a later exact-thread read. Existing identity belongs
+in the correction message and tool arguments, not the initial packet. No unresolved
+placeholder may remain in the pre-creation fields when `create_thread` runs.
 
-## 5. Real thread identity
+## 5. Parent-owned lifecycle record
+
+Immediately after creation begins, create a parent-owned lifecycle record. It is not sent
+in the initial `create_thread` prompt and is not child-authored acceptance evidence.
+Populate it only from returned tool data and independent repository inspection:
+
+```text
+PROJECT ID: exact selected project
+PROJECT KIND: verbatim returned projectKind
+SUPPORTS WORKTREES: verbatim returned supportsWorktrees
+REQUESTED ENVIRONMENT: exact create_thread environment
+BASE / STARTING STATE: independently confirmed branch/ref and commit
+REAL THREAD ID: returned or uniquely resolved real threadId
+HOST ID: returned or uniquely resolved hostId
+CHILD WORKTREE: returned or independently resolved exact path and branch metadata
+MONITORING MODE: preferred wait/read | exact-thread read_thread fallback
+ROUTING EVIDENCE: accepted creation or correction routing metadata when returned
+PREVIOUS COMPLETED TURN ID: none before the initial turn; exact prior ID before correction
+LATEST COMPLETED TURN ID: exact newly completed turn after acceptance gates pass
+COMMIT / PR STATE: independently inspected state
+```
+
+Existing identity belongs in the correction message and the tool arguments for
+`send_message_to_thread`. A correction updates this same lifecycle record; it never
+retroactively changes the initial child packet.
+
+## 6. Real thread identity
 
 A task-creation response may return either a ready real task identity or a setup handle.
 
@@ -159,7 +204,7 @@ A task-creation response may return either a ready real task identity or a setup
   preferred monitoring uses `wait_threads` and fallback monitoring polls exact
   `read_thread(threadId, hostId)`.
 
-## 6. Completion monitoring and handoff
+## 7. Completion monitoring and handoff
 
 ### Preferred path
 
@@ -227,20 +272,23 @@ Rules:
 The child handoff remains a claim. The parent independently inspects the actual
 repository and reruns required verification before acceptance.
 
-## 7. Correction identity and loop
+## 8. Correction identity and loop
 
 When the parent finds a defect:
 
 1. Record the previous completed turn ID and invalidate its handoff.
 2. Send exact findings, required changes, and rerun commands through
-   `send_message_to_thread` using the same real `threadId` and same `hostId`.
-3. Require the same child worktree; a correction must not silently move to a replacement
+   `send_message_to_thread` using the same real `threadId` and same `hostId`. Every
+   correction call must explicitly pass `model = gpt-5.6-luna` and `thinking = max`.
+3. Record any returned routing metadata. If returned routing metadata contradicts Luna /
+   Max, stop rather than accepting the correction under another route.
+4. Require the same child worktree; a correction must not silently move to a replacement
    worktree or repository.
-4. Use the same selected monitoring mode on that exact identity.
-5. Require a different, newly completed turn ID after the follow-up.
-6. Read the updated handoff from the new completed turn.
-7. Reinspect the same actual child worktree and rerun parent verification.
-8. Repeat only while progress is material and within the per-turn polling bound.
+5. Use the same selected monitoring mode on that exact identity.
+6. Require a different, newly completed turn ID after the follow-up.
+7. Read the updated handoff from the new completed turn.
+8. Reinspect the same actual child worktree and rerun parent verification.
+9. Repeat only while progress is material and within the per-turn polling bound.
 
 Any correction invalidates the earlier handoff. Do not accept the previous completed
 turn, a stale assistant message, or unchanged turn ID as correction evidence.
@@ -248,11 +296,11 @@ turn, a stale assistant message, or unchanged turn ID as correction evidence.
 Do not create a replacement task solely to avoid accumulated corrections or worker
 disagreement. A new task is for a genuinely independent stack.
 
-## 8. Parent acceptance
+## 9. Parent acceptance
 
 The parent may accept only after it has:
 
-- Confirmed accepted Luna / Max routing and the selected monitoring capability.
+- Confirmed accepted Luna / Max routing for creation and every correction call, plus the selected monitoring capability.
 - Recorded exact real thread, host, latest completed turn, and child-worktree identity.
 - Read the readable final assistant handoff for the latest completed turn.
 - Inspected the actual child worktree, branch/base, status, changed files, complete diff,
@@ -266,7 +314,7 @@ The parent may accept only after it has:
 File presence, thread title, preview text, elapsed time, thread idle, or the child's own
 claim cannot replace these gates.
 
-## 9. PR authorization
+## 10. PR authorization
 
 The default is no child PR action.
 
@@ -283,7 +331,7 @@ PR AUTHORIZED FOR <real-thread-id>
 4. Parent records concrete returned URL plus branch and commit evidence.
 5. A dependent task starts only after the prior accepted base exists and is recorded.
 
-## 10. Concurrency and dependency rules
+## 11. Concurrency and dependency rules
 
 - Concurrent tasks require non-overlapping owned files/modules and no dependency.
 - Shared files, generated artifacts, lockfiles, migrations, schemas, and dependent

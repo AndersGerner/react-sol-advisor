@@ -285,15 +285,15 @@ require(
     ),
 )
 
-project_contracts = "\n".join((skill, lane, roles, packet, readme))
 require(
     "project environment selection uses the observed projectKind/supportsWorktrees schema",
-    "isgitrepository" not in normalize(project_contracts)
-    and has_all(
+    has_all(
         lane,
         "actual returned schema",
         "projectKind",
         "supportsWorktrees",
+        "isGitRepository",
+        "absent",
         "independently confirm",
         '{type: "worktree"}',
         "only when",
@@ -303,9 +303,21 @@ require(
         skill,
         "projectKind",
         "supportsWorktrees",
+        "isGitRepository",
+        "absent",
         '{type: "worktree"}',
         "fail closed",
-    ),
+    )
+    and has_all(
+        roles,
+        "projectKind",
+        "supportsWorktrees",
+        "isGitRepository",
+        "not exposed",
+        '{type: "worktree"}',
+        "fail closed",
+    )
+    and "isgitrepository" not in normalize(packet),
 )
 
 for relative, value in ((lane_path, lane), (skill_path, skill), (roles_path, roles)):
@@ -384,8 +396,17 @@ require(
     has_all(invocations, "wait_threads", "absent", "read_thread", "same real threadId", "new completed turn ID"),
 )
 require(
-    "Luna packet records real identity turn and child worktree evidence",
-    has_all(packet, "real threadId", "hostId", "latest completed turn ID", "child worktree"),
+    "Luna example separates pre-creation fields from parent lifecycle evidence",
+    has_all(
+        packet,
+        "Example pre-creation Luna child packet",
+        "Parent-owned lifecycle record",
+        "not sent in the initial child prompt",
+        "Real threadId",
+        "HostId",
+        "Child worktree",
+        "Latest completed turn ID",
+    ),
 )
 
 # Release and CI integration.
@@ -425,9 +446,16 @@ for required_value in (
 ):
     require(f"live evidence records {required_value}", required_value in evidence)
 require(
-    "live evidence records observed transitions worktree verification correction and archive result",
+    "live evidence records schema routing transitions worktree correction and archive result",
     has_all(
         evidence,
+        "projectKind",
+        "supportsWorktrees",
+        "isGitRepository",
+        "not exposed",
+        '{type: "worktree"}',
+        "model = gpt-5.6-luna",
+        "thinking = max",
         "active / inProgress",
         "idle / completed",
         "active / completed",

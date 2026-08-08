@@ -17,6 +17,17 @@ and internal payloads.
 - Initial completed turn ID: `019fe2f5-2684-7402-9305-4372ce4e12cd`
 - Follow-up completed turn ID: `019fe2f7-1c3f-7860-bae9-b1cdfd9bb5f9`
 
+## Observed project schema and environment
+
+- `list_projects` returned the exact disposable project and exposed `projectKind` and
+  `supportsWorktrees` for it.
+- `isGitRepository` was not exposed by the recorded live schema and was not used to
+  choose the environment.
+- The selected project explicitly supported worktrees, and `create_thread` used the
+  schema-valid environment `{type: "worktree"}`.
+- Repository Git state and the exact base commit were independently confirmed from the
+  actual child worktree rather than inferred from project metadata.
+
 ## Observed lifecycle
 
 - `wait_threads` was not exposed.
@@ -25,7 +36,9 @@ and internal payloads.
 - Initial exact-thread reads observed:
   `active / inProgress` -> `idle / completed`.
 - The completed initial turn contained a readable final assistant handoff.
-- A follow-up sent with `send_message_to_thread` reused the same thread ID and host ID.
+- A follow-up sent with `send_message_to_thread` reused the same thread ID and host ID,
+  explicitly supplied `model = gpt-5.6-luna` and `thinking = max`, and accepted that
+  routing.
 - Follow-up exact-thread reads observed:
   `active / inProgress` -> `active / completed`.
 - The different follow-up turn ID contained a readable updated final assistant handoff.

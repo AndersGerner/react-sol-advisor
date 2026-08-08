@@ -100,8 +100,21 @@ Call `list_projects` first. The exact current project for the intended path must
 returned. If it is absent, stop and instruct the user to add or open the folder as a
 project in the Codex app and start a fresh task in that project. Never invent a project
 ID, attempt Computer Use against the app, or substitute another repository or local
-environment. Use the returned Git flag to choose the default isolated child worktree or
-the project-local environment.
+environment.
+
+Inspect the actual returned schema. The proven project fields are `projectKind` and
+`supportsWorktrees`; `isGitRepository` was not exposed and must not be treated as a
+required field. Record the returned values verbatim, independently confirm Git state and
+the exact base/ref when needed, and request `{type: "worktree"}` only when
+`supportsWorktrees == true` and the operation schema accepts it. Use a project-local
+environment only when the schema exposes a safe option for the exact project; otherwise
+fail closed.
+
+The initial child packet is pre-creation data only: project identity, returned schema
+fields, requested environment, exact base/ref, ownership, interfaces, constraints, and
+verification. Real thread/host identity, child-worktree metadata, monitoring mode, and
+completed-turn IDs belong in a separate parent-owned lifecycle record populated after
+creation. Existing identity belongs in the correction message, not the initial packet.
 
 Monitoring is capability-adaptive. `wait_threads` is preferred, not mandatory. With a
 usable `wait_threads` schema, wait on the exact real identity and then call
@@ -127,9 +140,11 @@ in-progress work, attention required, explicit failure, cancellation, unknown st
 tool error, or polling timeout is non-success.
 
 Corrections use `send_message_to_thread` with the same real `threadId`, same `hostId`,
-and same child worktree. Record the previous completed turn ID, require a different
-newly completed turn ID, read the updated handoff, and repeat parent inspection and
-verification. The correction invalidates the earlier handoff.
+and same child worktree. Every correction call explicitly passes
+`model = gpt-5.6-luna` and `thinking = max`; record any returned routing metadata and
+stop if it contradicts Luna / Max. Record the previous completed turn ID, require a
+different newly completed turn ID, read the updated handoff, and repeat parent inspection
+and verification. The correction invalidates the earlier handoff.
 
 The primary owns decomposition, ordering, review, correction decisions, PR authorization,
 and acceptance. A child may create or push a PR only after explicit primary

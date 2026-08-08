@@ -181,14 +181,29 @@ The primary task must use `list_projects` before `create_thread`. It may continu
 when the exact current project for the intended path is returned. If that project is
 absent, stop and tell the user to add or open the folder as a project in the Codex app
 and start a fresh task in that project. Do not invent a project ID, attempt Computer Use
-against the Codex app, or substitute another repository or local environment. Inspect
-`isGitRepository`; use the app's default isolated child worktree for Git projects and the
-project-local environment for non-Git projects. Worktree isolation is not merge safety.
+against the Codex app, or substitute another repository or local environment.
 
-The child receives a complete packet because a new user-visible task does not inherit
-the parent's full context. Set `model` to `gpt-5.6-luna` and `thinking` to `max` in
-`create_thread`. Treat accepted creation routing plus the returned real identity as the
-routing evidence; report model/thinking metadata only when the app tool provides it.
+Inspect the actual returned project schema and the actual `create_thread` environment
+schema. The proven project fields are `projectKind` and `supportsWorktrees`; do not rely
+on the absent `isGitRepository` field. Record the returned values verbatim and
+independently confirm repository Git state and the exact base/ref when needed. Request
+`{type: "worktree"}` only when `supportsWorktrees == true` and the operation schema
+accepts it. Use a project-local environment only when the actual schema exposes a safe
+local option for the exact project; otherwise fail closed. Worktree isolation is not
+merge safety.
+
+The child receives a complete pre-creation packet because a new user-visible task does
+not inherit the parent's full context. The packet contains only values known before
+creation: exact project identity, returned project schema fields, requested environment,
+exact base/ref, ownership, interfaces, constraints, and verification. It must not require
+a real thread, host, child-worktree path, monitoring mode, or completed-turn ID. After
+creation, the parent creates a separate lifecycle record for those returned or
+independently resolved values. Existing identity belongs in a correction message, not
+the initial packet.
+
+Set `model` to `gpt-5.6-luna` and `thinking` to `max` in `create_thread`. Treat accepted
+creation routing plus the returned real identity as routing evidence; report returned
+model/thinking metadata only when the app tool provides it.
 
 Monitoring is capability-adaptive. `wait_threads` is preferred, not mandatory. When it
 is exposed with a usable schema, use `wait_threads` then `read_thread`. When
@@ -213,9 +228,12 @@ attention-required, failed, cancelled, unknown, timed-out, `notLoaded`, or idle 
 a newly completed latest turn and readable handoff is non-success.
 
 Corrections use `send_message_to_thread` with the same real `threadId`, same `hostId`,
-and same child worktree. Record the previous completed turn ID, require a different
-newly completed turn ID, read its updated handoff, and repeat primary diff inspection
-and verification. Any correction invalidates the earlier handoff. The primary owns
+and same child worktree. Every correction call must explicitly pass
+`model = gpt-5.6-luna` and `thinking = max`, and the parent records any returned routing
+metadata. Returned routing metadata that contradicts Luna / Max stops the lane. Record
+the previous completed turn ID, require a different newly completed turn ID, read its
+updated handoff, and repeat primary diff inspection and verification. Any correction
+invalidates the earlier handoff. The primary owns
 decomposition, dependency ordering, review, correction decisions, PR authorization, and
 final acceptance. A Luna child must not create or push a PR until the primary explicitly
 authorizes it after accepting the diff and checks. Create a dependent child only after

@@ -1,6 +1,9 @@
-# Example Luna task packet
+# Example pre-creation Luna child packet
 
-This is illustrative. The parent must replace every value with repository evidence.
+The first code block is the self-contained prompt sent through `create_thread`. Replace
+every pre-creation value with repository and `list_projects` evidence before the call.
+Do not add thread, host, child-worktree, monitoring, or completed-turn values; the parent
+records those after creation.
 
 ```text
 ROLE
@@ -67,14 +70,11 @@ CONSTRAINTS
 
 STARTING STATE / BASE
 - Project ID: <actual returned ID from the exact intended project>
-- Git repository: true
-- Environment: isolated worktree
-- Base: <actual branch and commit>
-- Child worktree: <actual returned or independently resolved path>
-- Real threadId: <actual real identity after bounded discovery>
-- HostId: <actual host identity>
-- Latest completed turn ID: none for the initial turn; record the previous ID before a correction
-- Monitoring mode: preferred wait/read | exact-thread read_thread fallback
+- projectKind: <verbatim returned value>
+- supportsWorktrees: <verbatim returned true or false>
+- Requested environment: <exact schema-valid environment; use {type: "worktree"} only when supportsWorktrees is true>
+- Independently confirmed repository state: <actual Git or non-Git evidence>
+- Base: <actual branch/ref and commit>
 - Prior accepted stack: none
 
 VERIFICATION
@@ -90,15 +90,13 @@ VERIFICATION
 GIT / PR BOUNDARY
 - Report status, base, branch, changed files, diff summary, and commit state.
 - Commit only when this packet explicitly requests it.
-- Do not push or create/update a PR before `PR AUTHORIZED FOR <threadId>`.
+- Do not push or create/update a PR until a later parent authorization message names the
+  accepted task identity.
 - Do not merge, rebase, cherry-pick, or alter another stack.
 
 STRUCTURED RETURN
 STATUS: complete | partial | blocked
-TASK ID: real threadId and hostId
-LATEST COMPLETED TURN ID: exact completed turn identity
-CHILD WORKTREE: exact path
-MONITORING: selected mode and completion evidence
+WORKING DIRECTORY: report only when directly observable; the parent verifies it independently
 OBJECTIVE: one-line restatement
 ACCEPTANCE: each numbered criterion with evidence
 CANONICAL EXAMPLES: exact paths used
@@ -106,7 +104,61 @@ CHANGES: file-by-file actual diff summary
 TESTS: test cases added/changed
 VERIFIED: exact commands and concrete results
 GIT: branch, base, status, changed files, commit SHA if any
-PR: not authorized | authorized | URL with evidence
+PR: not authorized unless a later parent message explicitly authorizes it
 JUDGMENT CALLS: none or exact decisions
 GAPS: none or exact blockers
 ```
+
+No unresolved placeholder may remain in the pre-creation fields when the actual
+`create_thread` call is made.
+
+## Parent-owned lifecycle record
+
+This record is created after `create_thread` and is not sent in the initial child prompt.
+Populate it from tool results and independent repository inspection, never from guesses
+or child claims.
+
+```text
+PROJECT ID: exact selected project
+PROJECT KIND: verbatim returned projectKind
+SUPPORTS WORKTREES: verbatim returned supportsWorktrees
+REQUESTED ENVIRONMENT: exact create_thread environment
+BASE / STARTING STATE: independently confirmed branch/ref and commit
+REAL THREAD ID: actual real threadId returned or uniquely resolved after creation
+HOST ID: actual hostId returned or uniquely resolved after creation
+CHILD WORKTREE: actual returned or independently resolved path and branch metadata
+MONITORING MODE: preferred wait/read | exact-thread read_thread fallback
+ROUTING EVIDENCE: accepted creation routing metadata when returned
+PREVIOUS COMPLETED TURN ID: none before the initial turn; exact prior ID before correction
+LATEST COMPLETED TURN ID: exact newly completed turn accepted by the parent
+COMMIT / PR STATE: independently inspected state
+```
+
+## Same-thread correction message
+
+Existing identity belongs in this correction call, not in the initial child packet.
+
+```text
+TOOL ARGUMENTS
+threadId: <same real threadId from the parent lifecycle record>
+hostId: <same hostId from the parent lifecycle record>
+model: "gpt-5.6-luna"
+thinking: "max"
+
+MESSAGE
+Correct the following verified defects in the same child worktree:
+- <exact finding and evidence>
+
+Previous completed turn ID: <exact prior completed turn ID>
+Required worktree: <same independently verified child-worktree path>
+Rerun:
+- <exact focused verification>
+- <exact broader verification>
+
+Return an updated handoff for a new completed turn. Do not push or create/update a PR
+unless this correction message separately authorizes it.
+```
+
+After every correction call, the parent records any returned routing metadata and stops
+if it contradicts Luna / Max. The parent then requires a different newly completed turn
+ID, reads the updated handoff, and independently reinspects the same worktree and diff.

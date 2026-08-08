@@ -141,6 +141,18 @@ the real `threadId` and `hostId`, then uses bounded exact-thread
 discovery when creation returned a setup handle, never as a post-identity completion
 monitor.
 
+Before creation, inspect the actual project and environment schemas. The proven
+`list_projects` fields are `projectKind` and `supportsWorktrees`; do not rely on the
+absent `isGitRepository` field. Independently confirm repository Git state and the exact
+base/ref, and request `{type: "worktree"}` only when worktrees are explicitly supported.
+If the schema exposes no safe environment for the exact project, fail closed.
+
+The initial child packet contains only pre-creation values such as project identity,
+returned schema fields, requested environment, base/ref, ownership, interfaces, and
+verification. Real thread/host identity, child-worktree metadata, monitoring mode, and
+completed-turn IDs are populated afterward in a separate parent-owned lifecycle record.
+Existing identity belongs in a correction message, not the initial packet.
+
 A turn is accepted only when its latest status is `completed`, a readable final
 assistant handoff exists for that turn, the actual child worktree and complete diff have
 been independently inspected, and parent-run verification passes. Thread `idle` is not
@@ -148,11 +160,12 @@ required; `active / completed` is valid when those gates pass. `idle` without a 
 completed turn and `notLoaded` are not completion evidence. Polling is bounded and fails
 closed; there is no background callback.
 
-Corrections reuse the same real thread, host, and child worktree, and must produce a new
-completed turn ID plus an updated handoff. If `list_projects` does not return the exact
-intended path, add or open the folder as a project in the Codex app and start a fresh
-task in that project. The plugin does not invent project IDs, use Computer Use for
-registration, or substitute another repository.
+Corrections reuse the same real thread, host, and child worktree, explicitly pass
+`model = gpt-5.6-luna` and `thinking = max` on every correction call, record any returned
+routing metadata, and must produce a new completed turn ID plus an updated handoff. If
+`list_projects` does not return the exact intended path, add or open the folder as a
+project in the Codex app and start a fresh task in that project. The plugin does not
+invent project IDs, use Computer Use for registration, or substitute another repository.
 
 ## Native companion roles
 
@@ -205,6 +218,9 @@ The suite checks:
   missing operation. Provide explicit authorization before switching to Terra.
 - **Project path missing from `list_projects`**: add or open the folder as a project in
   the Codex app and start a fresh task in that project.
+- **Unsafe project environment**: inspect the returned `projectKind`,
+  `supportsWorktrees`, and `create_thread` environment schema; do not infer support from
+  an absent field or invent a local fallback.
 - **Stale native roles**: run `install-agents.sh --check` to detect missing, stale, or
   conflicting role files.
 - **Retired native Luna file**: remove the namespaced
