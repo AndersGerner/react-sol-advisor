@@ -27,5 +27,8 @@ jobs:
       - name: Run orchestration contract checks
         run: sh plugins/react-sol-advisor/scripts/verify-contracts.sh
 
+      - name: Run TMPDIR portability regressions
+        run: sh plugins/react-sol-advisor/scripts/verify-tmpdir-portability.sh
+
       - name: Check whitespace in the branch change set
         run: git diff --check origin/main...HEAD
