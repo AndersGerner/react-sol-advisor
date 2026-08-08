@@ -45,6 +45,16 @@ def has_all(value: str, *terms: str) -> bool:
     return all(normalize(term) in normalized for term in terms)
 
 
+def between(value: str, start_marker: str, end_marker: str) -> str:
+    start = value.find(start_marker)
+    if start < 0:
+        return ""
+    end = value.find(end_marker, start + len(start_marker))
+    if end < 0:
+        return ""
+    return value[start:end]
+
+
 def require(message: str, condition: bool) -> None:
     if not condition:
         fail(message)
@@ -227,6 +237,103 @@ require(
         "do not invent a project ID",
         "do not attempt Computer Use",
         "do not fall back to another repository or local environment",
+    ),
+)
+
+# Review hardening: creation-time data, project schema, and correction routing.
+initial_starting_state = between(packet, "STARTING STATE / BASE", "VERIFICATION")
+parent_lifecycle_record = between(
+    packet,
+    "## Parent-owned lifecycle record",
+    "## Same-thread correction message",
+)
+require(
+    "initial child packet is phase-separated from the parent lifecycle record",
+    has_all(
+        lane,
+        "Pre-creation Luna child packet",
+        "Parent-owned lifecycle record",
+        "not sent in the initial create_thread prompt",
+        "existing identity belongs in the correction message",
+    )
+    and has_all(
+        initial_starting_state,
+        "Project ID",
+        "projectKind",
+        "supportsWorktrees",
+        "Requested environment",
+        "Base",
+        "Prior accepted stack",
+    )
+    and not any(
+        normalize(forbidden) in normalize(initial_starting_state)
+        for forbidden in (
+            "Real threadId",
+            "HostId",
+            "Child worktree",
+            "Latest completed turn ID",
+            "Monitoring mode",
+        )
+    )
+    and has_all(
+        parent_lifecycle_record,
+        "Real threadId",
+        "HostId",
+        "Child worktree",
+        "Monitoring mode",
+        "Latest completed turn ID",
+    ),
+)
+
+project_contracts = "\n".join((skill, lane, roles, packet, readme))
+require(
+    "project environment selection uses the observed projectKind/supportsWorktrees schema",
+    "isgitrepository" not in normalize(project_contracts)
+    and has_all(
+        lane,
+        "actual returned schema",
+        "projectKind",
+        "supportsWorktrees",
+        "independently confirm",
+        '{type: "worktree"}',
+        "only when",
+        "fail closed",
+    )
+    and has_all(
+        skill,
+        "projectKind",
+        "supportsWorktrees",
+        '{type: "worktree"}',
+        "fail closed",
+    ),
+)
+
+for relative, value in ((lane_path, lane), (skill_path, skill), (roles_path, roles)):
+    require(
+        f"{relative} pins Luna Max on every correction call",
+        has_all(
+            value,
+            "every correction call",
+            "send_message_to_thread",
+            "model",
+            "gpt-5.6-luna",
+            "thinking",
+            "max",
+            "returned routing metadata",
+        ),
+    )
+require(
+    "correction example reasserts Luna Max routing on the same identity",
+    has_all(
+        invocations,
+        "correction call",
+        "same real threadId",
+        "same hostId",
+        "model",
+        "gpt-5.6-luna",
+        "thinking",
+        "max",
+        "returned routing metadata",
     ),
 )
 
