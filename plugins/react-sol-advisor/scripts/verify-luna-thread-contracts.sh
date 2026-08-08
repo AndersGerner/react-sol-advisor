@@ -349,6 +349,83 @@ require(
     ),
 )
 
+# Review hardening: real identity permits the first exact read to discover the worktree.
+real_identity_contract = between(
+    lane,
+    "## 6. Real thread identity",
+    "## 7. Completion monitoring and handoff",
+)
+lifecycle_record_contract = between(
+    lane,
+    "## 5. Parent-owned lifecycle record",
+    "## 6. Real thread identity",
+)
+require(
+    "first exact read may discover and pin the child worktree",
+    has_all(
+        real_identity_contract,
+        "real threadId",
+        "hostId",
+        "before the first",
+        "wait_threads",
+        "read_thread",
+    )
+    and has_all(
+        real_identity_contract,
+        "child worktree",
+        "unresolved",
+        "first exact read",
+        "populate",
+    )
+    and has_all(
+        real_identity_contract,
+        "subsequent exact read",
+        "same child worktree",
+    )
+    and has_all(
+        real_identity_contract,
+        "before correction",
+        "acceptance",
+        "PR authorization",
+        "dependent-task creation",
+    )
+    and has_all(
+        lifecycle_record_contract,
+        "CHILD WORKTREE",
+        "unresolved",
+        "first exact read",
+    )
+    and has_all(
+        skill,
+        "threadId",
+        "hostId",
+        "first exact read",
+        "child worktree",
+        "unresolved",
+        "same worktree",
+    )
+    and has_all(
+        roles,
+        "threadId",
+        "hostId",
+        "first exact read",
+        "child worktree",
+        "unresolved",
+    )
+    and has_all(
+        packet,
+        "CHILD WORKTREE",
+        "unresolved",
+        "first exact read",
+    )
+    and not has_all(
+        real_identity_contract,
+        "threadId",
+        "hostId",
+        "child worktree before waiting, reading",
+    ),
+)
+
 # 15. Archive correctness requires explicit returned archived=true and remains optional.
 require(
     "archive success requires exact identity and explicit returned archived true",
