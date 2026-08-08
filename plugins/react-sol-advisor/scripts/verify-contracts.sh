@@ -11,8 +11,10 @@ role_contracts=$plugin_dir/skills/orchestration/references/role-contracts.md
 model_routing=$plugin_dir/skills/orchestration/references/model-routing.md
 installer=$script_dir/install-agents.sh
 test_support=$script_dir/verifier-test-support.sh
+luna_thread_verifier=$script_dir/verify-luna-thread-contracts.sh
 manifest=$plugin_dir/.codex-plugin/plugin.json
 readme=$repo_dir/README.md
+changelog=$repo_dir/CHANGELOG.md
 workflow=$repo_dir/.github/workflows/verify.yml
 
 fail() {
@@ -21,10 +23,21 @@ fail() {
   exit 1
 }
 
-for required in "$skill" "$role_contracts" "$model_routing" "$installer" "$test_support" "$manifest" "$readme" "$workflow"; do
+for required in "$skill" "$role_contracts" "$model_routing" "$installer" "$test_support" "$luna_thread_verifier" "$manifest" "$readme" "$changelog" "$workflow"; do
   [ -f "$required" ] || fail "missing contract file: $required"
 done
 . "$test_support"
+
+[ "$(jq -r '.version' "$manifest")" = '0.1.1' ] ||
+  fail "manifest version is not 0.1.1"
+grep -Fq '## 0.1.1 - 2026-08-08' "$changelog" ||
+  fail "changelog does not record version 0.1.1"
+grep -Fq 'sh plugins/react-sol-advisor/scripts/verify-luna-thread-contracts.sh' "$workflow" ||
+  fail "GitHub Actions does not run verify-luna-thread-contracts.sh"
+grep -Fq '0.1.1' "$luna_thread_verifier" ||
+  fail "focused Luna thread verifier does not enforce version 0.1.1"
+sh -n "$luna_thread_verifier" ||
+  fail "focused Luna thread verifier has invalid shell syntax"
 
 if grep -Fq "before any explicitly authorized Luna task" "$skill"; then
   fail "orchestration still treats default policy-selected Luna work as separately opt-in"

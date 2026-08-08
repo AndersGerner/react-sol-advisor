@@ -66,11 +66,15 @@ CONSTRAINTS
 - Stop if the canonical filter uses a different ownership model than described.
 
 STARTING STATE / BASE
-- Project ID: <actual returned ID>
+- Project ID: <actual returned ID from the exact intended project>
 - Git repository: true
 - Environment: isolated worktree
 - Base: <actual branch and commit>
-- Existing task identity: none
+- Child worktree: <actual returned or independently resolved path>
+- Real threadId: <actual real identity after bounded discovery>
+- HostId: <actual host identity>
+- Latest completed turn ID: none for the initial turn; record the previous ID before a correction
+- Monitoring mode: preferred wait/read | exact-thread read_thread fallback
 - Prior accepted stack: none
 
 VERIFICATION
@@ -92,6 +96,9 @@ GIT / PR BOUNDARY
 STRUCTURED RETURN
 STATUS: complete | partial | blocked
 TASK ID: real threadId and hostId
+LATEST COMPLETED TURN ID: exact completed turn identity
+CHILD WORKTREE: exact path
+MONITORING: selected mode and completion evidence
 OBJECTIVE: one-line restatement
 ACCEPTANCE: each numbered criterion with evidence
 CANONICAL EXAMPLES: exact paths used

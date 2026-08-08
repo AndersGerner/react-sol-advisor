@@ -2,6 +2,23 @@
 
 All notable changes to React Sol Advisor will be documented in this file.
 
+## 0.1.1 - 2026-08-08
+
+### Changed
+
+- Made `wait_threads` the preferred Luna monitor rather than a mandatory capability.
+- Added the proven bounded exact-thread `read_thread(threadId, hostId)` polling fallback
+  when all five baseline app-task operations are exposed.
+- Defined latest-turn completion, readable handoff, active/completed acceptance,
+  same-thread correction, exact-project registration, and explicit archive evidence.
+
+### Added
+
+- Added semantic contract coverage for the Luna exact-thread lifecycle and wired it into
+  GitHub Actions.
+- Added a non-secret live compatibility evidence record for the initial turn,
+  same-thread follow-up, child-worktree verification, and archive acknowledgement.
+
 ## 0.1.0 - 2026-08-06
 
 ### Added

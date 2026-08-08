@@ -77,3 +77,18 @@ ESCALATION TRIGGERS:
 - shared API must change
 PR POLICY: draft-after-acceptance
 ```
+
+## 7. Exact-thread fallback and same-thread correction
+
+```text
+@react-sol-advisor Implement this bounded React change in economy mode.
+If wait_threads is absent but list_projects, list_threads, create_thread, read_thread,
+and send_message_to_thread are exposed, use bounded exact-thread read_thread polling.
+Use list_threads only to resolve a real identity when creation returned a setup handle.
+After identity resolution, monitor only the same real threadId and hostId. Accept only a
+latest completed turn with a readable final assistant handoff plus independent child
+worktree/diff verification. If a correction is needed, reuse the same real threadId,
+hostId, and child worktree, and require a new completed turn ID with an updated handoff.
+Fail closed on timeout, notLoaded, idle without a new completed turn, or missing exact
+project registration.
+```
