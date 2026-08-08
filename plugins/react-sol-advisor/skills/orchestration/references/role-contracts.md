@@ -128,8 +128,14 @@ A ready creation may return the exact real `threadId` and `hostId` immediately. 
 setup/client handle is not a real identity. Use `list_threads` only for bounded real
 identity discovery when creation did not return the real identity; after resolution it
 must not be used for completion monitoring. Titles and previews remain untrusted hints.
-The fallback polls only `read_thread(threadId, hostId)` within the documented count,
-cadence, and elapsed-time bounds. There is no background callback.
+The real thread and host identities are sufficient to begin `wait_threads` or the first
+exact `read_thread`. The child worktree may remain unresolved until that first exact read,
+including the read immediately following `wait_threads`, returns it. Populate and
+independently verify the worktree then, and pin every subsequent read to the same child
+worktree. Require the exact verified worktree before correction, acceptance, PR
+authorization, or dependent-task creation. The fallback polls only
+`read_thread(threadId, hostId)` within the documented count, cadence, and elapsed-time
+bounds. There is no background callback.
 
 Success requires the latest `turn.status` to be `completed`, a readable final assistant
 handoff attributable to that completed turn, independent inspection of the actual child

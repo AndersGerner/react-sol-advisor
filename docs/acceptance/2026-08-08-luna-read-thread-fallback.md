@@ -32,7 +32,10 @@ and internal payloads.
 
 - `wait_threads` was not exposed.
 - `create_thread` accepted `gpt-5.6-luna` with `thinking = max` and returned the real
-  Luna thread and host identity.
+  Luna thread and host identity, but not the child-worktree path.
+- The first exact `read_thread(threadId, hostId)` response revealed the child worktree.
+  The parent recorded and independently verified that path before acceptance; subsequent
+  reads and the follow-up remained on the same worktree.
 - Initial exact-thread reads observed:
   `active / inProgress` -> `idle / completed`.
 - The completed initial turn contained a readable final assistant handoff.

@@ -2,8 +2,9 @@
 
 The first code block is the self-contained prompt sent through `create_thread`. Replace
 every pre-creation value with repository and `list_projects` evidence before the call.
-Do not add thread, host, child-worktree, monitoring, or completed-turn values; the parent
-records those after creation.
+Do not add thread, host, child-worktree, monitoring, or completed-turn values. The
+parent records thread/host and monitoring mode after creation, then records the child
+worktree when the first exact read reveals it.
 
 ```text
 ROLE
@@ -126,13 +127,17 @@ REQUESTED ENVIRONMENT: exact create_thread environment
 BASE / STARTING STATE: independently confirmed branch/ref and commit
 REAL THREAD ID: actual real threadId returned or uniquely resolved after creation
 HOST ID: actual hostId returned or uniquely resolved after creation
-CHILD WORKTREE: actual returned or independently resolved path and branch metadata
+CHILD WORKTREE: unresolved until the first exact read returns it; then independently verified path and branch metadata
 MONITORING MODE: preferred wait/read | exact-thread read_thread fallback
 ROUTING EVIDENCE: accepted creation routing metadata when returned
 PREVIOUS COMPLETED TURN ID: none before the initial turn; exact prior ID before correction
 LATEST COMPLETED TURN ID: exact newly completed turn accepted by the parent
 COMMIT / PR STATE: independently inspected state
 ```
+
+The real thread and host identities are sufficient to begin monitoring while `CHILD
+WORKTREE` remains `unresolved`. The first exact read populates that field; every later
+read must remain attributable to the same independently verified worktree.
 
 ## Same-thread correction message
 

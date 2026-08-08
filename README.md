@@ -149,8 +149,12 @@ If the schema exposes no safe environment for the exact project, fail closed.
 
 The initial child packet contains only pre-creation values such as project identity,
 returned schema fields, requested environment, base/ref, ownership, interfaces, and
-verification. Real thread/host identity, child-worktree metadata, monitoring mode, and
-completed-turn IDs are populated afterward in a separate parent-owned lifecycle record.
+verification. Real thread/host identity and monitoring mode are populated afterward in a
+separate parent-owned lifecycle record. Those identities are sufficient to begin
+monitoring while the child worktree remains unresolved. The first exact read, including
+the read after `wait_threads`, may reveal the worktree; the parent then independently
+verifies it and pins subsequent reads to that same worktree. Exact worktree evidence is
+required before correction, acceptance, PR authorization, or dependent-task creation.
 Existing identity belongs in a correction message, not the initial packet.
 
 A turn is accepted only when its latest status is `completed`, a readable final

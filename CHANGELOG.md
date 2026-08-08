@@ -19,6 +19,9 @@ All notable changes to React Sol Advisor will be documented in this file.
   supported.
 - Required every correction call to reassert `gpt-5.6-luna` with `thinking = max` and
   record any returned routing metadata.
+- Allowed real thread/host identity to begin monitoring while the child worktree remains
+  unresolved, then required the first exact read to populate and pin the verified
+  worktree before correction, acceptance, PR authorization, or dependent work.
 
 ### Added
 

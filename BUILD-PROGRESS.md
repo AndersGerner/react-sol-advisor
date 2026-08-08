@@ -189,11 +189,29 @@ Repair details:
 
 - The initial `create_thread` packet now contains only pre-creation project, environment,
   base, ownership, interface, constraint, and verification data.
-- The parent lifecycle record is populated after creation with real thread, host,
-  worktree, monitoring, routing, and completed-turn evidence.
+- The parent lifecycle record starts after creation with real thread/host and
+  monitoring evidence, while the child worktree remains unresolved until the first exact
+  read returns and independently verifies it.
 - Environment selection uses returned `projectKind` and `supportsWorktrees`, independently
   confirms Git/base state, and requests `{type: "worktree"}` only when explicitly
   supported.
 - Every same-thread correction call explicitly supplies `model = gpt-5.6-luna` and
   `thinking = max`, records returned routing metadata when present, and fails closed on a
   contradictory route.
+
+### Second review repair: first-read worktree discovery
+
+A later Sol review found one remaining ordering contradiction: the contract required the
+child worktree before the first exact read even though the live host returned that path
+from the first exact read.
+
+| Phase | Command / evidence | Result |
+|---|---|---|
+| Red | Added the worktree-order regression before contract changes | Exit 1: `FAIL: first exact read may discover and pin the child worktree` |
+| Green | Same focused verifier after identity/worktree ordering was corrected | Exit 0: `LUNA THREAD CONTRACTS PASSED` |
+
+The corrected sequence is: creation or bounded discovery establishes the real thread and
+host; those identities permit the first wait/read operation; the first exact read may
+populate the unresolved child-worktree field; the parent independently verifies it; and
+all subsequent reads remain pinned to that same worktree. Exact worktree evidence remains
+mandatory before correction, acceptance, PR authorization, or dependent-task creation.

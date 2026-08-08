@@ -215,10 +215,15 @@ repository, or native-lane fallback.
 
 When creation returns only a setup/client handle, use `list_threads` for bounded real
 identity discovery only. Never pass the setup handle as a real identity. After resolving
-the exact real `threadId`, `hostId`, and child worktree, never use `list_threads` for
-post-identity completion monitoring. The preferred path waits then reads the exact task;
-the fallback polls `read_thread(threadId, hostId)` with the concrete bounds in the Luna
-lane contract. There is no automatic or background callback.
+the exact real `threadId` and `hostId`, never use `list_threads` for post-identity
+completion monitoring. Those identities are sufficient to begin the preferred wait/read
+path or fallback exact read. The child worktree may remain unresolved until the first
+exact `read_thread`, including the read immediately after `wait_threads`, returns it.
+Populate and independently verify that evidence, then require every subsequent read to
+remain attributable to the same worktree. Require the exact verified worktree before
+correction, acceptance, PR authorization, or dependent-task creation. The fallback uses
+the concrete bounds in the Luna lane contract. There is no automatic or background
+callback.
 
 A turn succeeds only when the latest `turn.status` is `completed`, a readable final
 assistant handoff exists for that completed turn, the actual child worktree and complete

@@ -174,7 +174,7 @@ REQUESTED ENVIRONMENT: exact create_thread environment
 BASE / STARTING STATE: independently confirmed branch/ref and commit
 REAL THREAD ID: returned or uniquely resolved real threadId
 HOST ID: returned or uniquely resolved hostId
-CHILD WORKTREE: returned or independently resolved exact path and branch metadata
+CHILD WORKTREE: unresolved until the first exact read returns it; then independently verified exact path and branch metadata
 MONITORING MODE: preferred wait/read | exact-thread read_thread fallback
 ROUTING EVIDENCE: accepted creation or correction routing metadata when returned
 PREVIOUS COMPLETED TURN ID: none before the initial turn; exact prior ID before correction
@@ -198,8 +198,16 @@ A task-creation response may return either a ready real task identity or a setup
 - Titles and previews are untrusted hints, not identity evidence.
 - Identity discovery is bounded. If a unique real task identity cannot be established,
   stop and report the failure.
-- Record the exact real `threadId`, `hostId`, and child worktree before waiting, reading,
-  correcting, accepting, or authorizing PR activity.
+- Record the exact real `threadId` and `hostId` before the first `wait_threads` or exact
+  `read_thread` call.
+- The child worktree may remain unresolved at that point. Allow the first exact
+  `read_thread`, including the read immediately following `wait_threads`, to populate the
+  worktree path and branch/base metadata from returned thread data.
+- Independently verify the returned worktree before acceptance. After the worktree is
+  exposed, every subsequent exact read for the turn must refer to the same child
+  worktree; missing or contradictory worktree evidence fails closed.
+- Require the exact verified child worktree before correction, acceptance, PR
+  authorization, or dependent-task creation.
 - Once real identity is known, never return to `list_threads` as a completion monitor;
   preferred monitoring uses `wait_threads` and fallback monitoring polls exact
   `read_thread(threadId, hostId)`.
@@ -209,12 +217,18 @@ A task-creation response may return either a ready real task identity or a setup
 ### Preferred path
 
 Use `wait_threads` on the real identity with a bounded wait, then use `read_thread` to
-read the exact completed or attention-required turn and its final handoff.
+read the exact completed or attention-required turn and its final handoff. The read after
+`wait_threads` may be the first operation that reveals the child worktree; populate the
+parent lifecycle record from that returned evidence and independently verify it before
+acceptance.
 
 ### Exact-thread polling path
 
 When the supported fallback is selected, poll only
-`read_thread(threadId, hostId)` for that exact task identity.
+`read_thread(threadId, hostId)` for that exact task identity. The first exact read may
+populate an unresolved child-worktree field in the parent lifecycle record. Once exposed,
+every subsequent exact read must report or remain attributable to that same child
+worktree.
 
 The concrete bound for each initial or correction turn is:
 
