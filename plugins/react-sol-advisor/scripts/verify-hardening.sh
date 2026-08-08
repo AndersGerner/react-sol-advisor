@@ -14,24 +14,25 @@ record_failure() {
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd) || exit 1
 installer=$script_dir/install-agents.sh
 runtime_inspector=$script_dir/inspect-agent-runtime.sh
+test_support=$script_dir/verifier-test-support.sh
+
+[ -f "$test_support" ] || {
+  printf '%s\n' "FAIL: missing verifier test support: $test_support" >&2
+  exit 1
+}
+. "$test_support"
 
 terra_file=react-sol-advisor-terra-implementer.toml
 sol_file=react-sol-advisor-sol-reviewer.toml
 
-tmp_base=${TMPDIR:-/tmp}
-case "$tmp_base" in
-  /*) ;;
-  *) tmp_base=/tmp ;;
-esac
+tmp_base=$(rsa_resolve_verifier_tmp_base) || {
+  printf '%s\n' "FAIL: could not resolve verifier TMPDIR" >&2
+  exit 1
+}
 
 tmp_dir=''
 cleanup() {
-  if [ -n "$tmp_dir" ] && [ -d "$tmp_dir" ]; then
-    case "$tmp_dir" in
-      "$tmp_base"/react-sol-advisor-hardening.*) rm -rf "$tmp_dir" ;;
-      *) printf '%s\n' "ERROR: refusing cleanup of unexpected directory: $tmp_dir" >&2 ;;
-    esac
-  fi
+  rsa_cleanup_verifier_fixture "$tmp_base" react-sol-advisor-hardening "$tmp_dir" || true
 }
 trap cleanup 0 HUP INT TERM
 
@@ -93,8 +94,12 @@ esac
 exec /bin/ln "$@"
 EOF
 chmod +x "$fake_bin/ln"
-if PATH="$fake_bin:$PATH" sh "$installer" --target-dir "$rollback_target" >/dev/null 2>&1; then
+if rollback_output=$(PATH="$fake_bin:$PATH" sh "$installer" --target-dir "$rollback_target" 2>&1); then
   record_failure "installer did not stop on the simulated second-link failure"
+elif ! printf '%s\n' "$rollback_output" | grep -Fq "INSTALLED: $rollback_target/$terra_file"; then
+  record_failure "installer did not install Terra before the simulated second-link failure"
+elif ! printf '%s\n' "$rollback_output" | grep -Fq "SIMULATED SECOND-LINK FAILURE"; then
+  record_failure "installer did not reach the simulated second-link failure"
 elif [ -e "$rollback_target/$terra_file" ] || [ -e "$rollback_target/$sol_file" ]; then
   record_failure "installer left a partial installation for a target containing spaces"
 else

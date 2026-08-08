@@ -12,6 +12,7 @@ repo_dir=$(CDPATH= cd "$plugin_dir/../.." && pwd) || exit 1
 
 installer=$script_dir/install-agents.sh
 runtime_inspector=$script_dir/inspect-agent-runtime.sh
+test_support=$script_dir/verifier-test-support.sh
 manifest=$plugin_dir/.codex-plugin/plugin.json
 marketplace=$repo_dir/.agents/plugins/marketplace.json
 template_dir=$plugin_dir/agents
@@ -21,7 +22,7 @@ sol_file=react-sol-advisor-sol-reviewer.toml
 terra_template=$template_dir/$terra_file
 sol_template=$template_dir/$sol_file
 
-for required in "$installer" "$runtime_inspector" "$manifest" "$marketplace" "$terra_template" "$sol_template"; do
+for required in "$installer" "$runtime_inspector" "$test_support" "$manifest" "$marketplace" "$terra_template" "$sol_template"; do
   test -f "$required" || fail "required file missing: $required"
 done
 
@@ -161,22 +162,18 @@ pass "two exact role TOML pins"
 
 sh -n "$installer"
 sh -n "$runtime_inspector"
+sh -n "$test_support"
 sh -n "$script_dir/verify.sh"
+sh -n "$script_dir/verify-hardening.sh"
+sh -n "$script_dir/verify-contracts.sh"
+sh -n "$script_dir/verify-tmpdir-portability.sh"
 pass "shell syntax"
 
-tmp_base=${TMPDIR:-/tmp}
-case "$tmp_base" in
-  /*) ;;
-  *) tmp_base=/tmp ;;
-esac
+. "$test_support"
+tmp_base=$(rsa_resolve_verifier_tmp_base) || fail "could not resolve verifier TMPDIR"
 tmp_dir=''
 cleanup() {
-  if [ -n "$tmp_dir" ] && [ -d "$tmp_dir" ]; then
-    case "$tmp_dir" in
-      "$tmp_base"/react-sol-advisor-verify.*) rm -rf "$tmp_dir" ;;
-      *) printf '%s\n' "ERROR: refusing cleanup of unexpected directory: $tmp_dir" >&2 ;;
-    esac
-  fi
+  rsa_cleanup_verifier_fixture "$tmp_base" react-sol-advisor-verify "$tmp_dir" || true
 }
 trap cleanup 0 HUP INT TERM
 tmp_dir=$(mktemp -d "$tmp_base/react-sol-advisor-verify.XXXXXX") || fail "could not create disposable verification directory"
@@ -280,15 +277,22 @@ fake_ln_dir=$tmp_dir/fake-bin
 mkdir "$fake_ln_dir"
 cat > "$fake_ln_dir/ln" <<'EOF'
 #!/bin/sh
-case "$*" in
-  *sol-reviewer*) echo "SIMULATED FAILURE" >&2; exit 1 ;;
+case "${2-}" in
+  *react-sol-advisor-sol-reviewer.toml)
+    printf '%s\n' "SIMULATED SECOND-LINK FAILURE" >&2
+    exit 1
+    ;;
 esac
 exec /bin/ln "$@"
 EOF
 chmod +x "$fake_ln_dir/ln"
-if PATH="$fake_ln_dir:$PATH" sh "$installer" --target-dir "$rollback_target" >/dev/null 2>&1; then
+if rollback_output=$(PATH="$fake_ln_dir:$PATH" sh "$installer" --target-dir "$rollback_target" 2>&1); then
   fail "installer did not stop on simulated Sol installation failure"
 fi
+printf '%s\n' "$rollback_output" | grep -Fq "INSTALLED: $rollback_target/$terra_file" ||
+  fail "simulated rollback test did not install Terra before the second link"
+printf '%s\n' "$rollback_output" | grep -Fq "SIMULATED SECOND-LINK FAILURE" ||
+  fail "simulated rollback test did not reach the second link"
 if [ -f "$rollback_target/$terra_file" ] || [ -f "$rollback_target/$sol_file" ]; then
   fail "installer left partial files after a second-install failure"
 fi

@@ -150,10 +150,11 @@ Run the complete local verification suite before accepting changes:
 sh plugins/react-sol-advisor/scripts/verify.sh
 sh plugins/react-sol-advisor/scripts/verify-hardening.sh
 sh plugins/react-sol-advisor/scripts/verify-contracts.sh
+sh plugins/react-sol-advisor/scripts/verify-tmpdir-portability.sh
 git diff --check
 ```
 
-The GitHub Actions workflow runs the three verifier scripts plus a base-to-head
+The GitHub Actions workflow runs the four verifier scripts plus a base-to-head
 whitespace check on pushes to `main` and `feat/*` branches and on pull requests targeting
 `main`.
 
