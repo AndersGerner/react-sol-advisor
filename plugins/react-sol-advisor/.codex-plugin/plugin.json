@@ -1,6 +1,6 @@
 {
   "name": "react-sol-advisor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Luna-first React delivery for Codex with explicit Terra / High escalation and fresh Sol review.",
   "author": {"name": "Anders Gerner", "url": "https://github.com/AndersGerner"},
   "homepage": "https://github.com/AndersGerner/react-sol-advisor#readme",
@@ -11,7 +11,7 @@
   "interface": {
     "displayName": "React Sol Advisor",
     "shortDescription": "Route React work through Luna / Max, escalate to Terra / High, and verify before acceptance.",
-    "longDescription": "React Sol Advisor is a Luna-first React delivery orchestrator for Codex. GPT-5.6 Sol stays in the primary session for architecture, decomposition, verification, and acceptance. The default economy policy routes bounded React, Next.js, React Native, and Expo work through user-visible GPT-5.6 Luna / Max app tasks. Balanced policy escalates amber and red work to a separately installed GPT-5.6 Terra / High native role when appropriate, while critical policy always requires a fresh Sol review after parent verification. Optional Linear intake is read-only and never a hard dependency.",
+    "longDescription": "React Sol Advisor is a Luna-first React delivery orchestrator for Codex. GPT-5.6 Sol stays in the primary session for architecture, decomposition, verification, and acceptance. The default economy policy routes bounded React, Next.js, React Native, and Expo work through user-visible GPT-5.6 Luna / Max app tasks with capability-adaptive monitoring: wait_threads is preferred, while bounded exact-thread read_thread polling is supported when the proven baseline operations are exposed. Balanced policy escalates amber and red work to a separately installed GPT-5.6 Terra / High native role when appropriate, while critical policy always requires a fresh Sol review after parent verification. Optional Linear intake is read-only and never a hard dependency.",
     "developerName": "Anders Gerner",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],

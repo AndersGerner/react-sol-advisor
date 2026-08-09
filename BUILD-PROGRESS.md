@@ -118,3 +118,100 @@ Verification: repository, hardening, contract, and changed-range whitespace gate
 Residual risk: live Codex Luna/Terra/Sol task routing, Linear, archive operations, and official Codex validators remain capability-dependent and were not exercised in this review environment
 PR URL: https://github.com/AndersGerner/react-sol-advisor/pull/1
 ```
+
+## 0.1.1 Luna exact-thread compatibility release
+
+The live Codex compatibility probe supersedes the earlier React Sol Advisor limitation
+that treated `wait_threads` as a hard Luna dependency. It changes only the namespaced
+React Sol Advisor app-task monitoring contract. Native Terra/Sol routing, role pins,
+installer behavior, runtime inspection, routing thresholds, critical-mode review, and
+Linear write policy remain unchanged.
+
+### Red-green cycle
+
+| Phase | Command / evidence | Result |
+|---|---|---|
+| Red | `sh plugins/react-sol-advisor/scripts/verify-luna-thread-contracts.sh` before contract changes | Exit 1: `FAIL: wait_threads is preferred rather than mandatory` |
+| Green | Same focused verifier after the capability-adaptive contract change | Exit 0: `LUNA THREAD CONTRACTS PASSED` |
+
+### Live compatibility evidence
+
+- Disposable Luna project, exact project/host/thread identities, both completed turn IDs,
+  observed initial and follow-up transitions, child-worktree verification, and explicit
+  archive acknowledgement are recorded in
+  `docs/acceptance/2026-08-08-luna-read-thread-fallback.md`.
+- Initial completion was observed as `idle / completed`; the same-thread follow-up was
+  observed as `active / completed`, proving thread idle is not a success requirement.
+- Both child artifacts were independently verified byte-exact in the actual detached
+  child worktree before acceptance.
+- `set_thread_archived` explicitly returned `archived = true`; later `notLoaded` state
+  was not used as completion or archive evidence.
+
+`EXACT_THREAD_POLLING_FALLBACK: SUPPORTED`
+
+### Tracked-file search disposition
+
+A tracked-file search for `wait_threads`, `wait/read`, `required app task tool`, and
+`required capability` found contradictions in the React Sol Advisor contracts and
+examples; those are updated by 0.1.1. The separately shipped upstream
+`plugins/sol-advisor` plugin still documents its own mandatory `wait_threads` contract
+and is intentionally unchanged because this compatibility release is scoped to
+`plugins/react-sol-advisor`. Existing 0.1.0 build rows remain unedited historical
+evidence; this section supersedes only their live Luna-monitoring limitation for the
+React fork.
+
+### 0.1.1 local verification
+
+| Scope | Command | Result |
+|---|---|---|
+| Repository | `sh plugins/react-sol-advisor/scripts/verify.sh` | Exit 0: `VERIFY PASSED` |
+| Hardening | `sh plugins/react-sol-advisor/scripts/verify-hardening.sh` | Exit 0: `HARDENING PASSED` |
+| Existing contracts | `sh plugins/react-sol-advisor/scripts/verify-contracts.sh` | Exit 0: `CONTRACTS PASSED` |
+| Exact-thread contracts | `sh plugins/react-sol-advisor/scripts/verify-luna-thread-contracts.sh` | Exit 0: `LUNA THREAD CONTRACTS PASSED` |
+| TMPDIR portability | `sh plugins/react-sol-advisor/scripts/verify-tmpdir-portability.sh` | Exit 0: `TMPDIR PORTABILITY PASSED` |
+
+The focused verifier also checks byte-identical SHA-256 values for both native role
+files, `install-agents.sh`, and `inspect-agent-runtime.sh` against the required base.
+
+### Review repair cycle
+
+The post-implementation Sol review found three contract defects: the initial packet
+required post-creation values, environment selection referenced an unexposed project
+field, and corrections did not explicitly reassert Luna / Max. The repair preserves the
+0.1.1 release scope and protected native subsystem.
+
+| Phase | Command / evidence | Result |
+|---|---|---|
+| Red | Added review regression checks to `verify-luna-thread-contracts.sh` before changing the contracts | Exit 1: `FAIL: initial child packet is phase-separated from the parent lifecycle record` |
+| Green | Same focused verifier after packet/lifecycle separation, schema-grounded environment selection, and correction-route pinning | Exit 0: `LUNA THREAD CONTRACTS PASSED` |
+
+Repair details:
+
+- The initial `create_thread` packet now contains only pre-creation project, environment,
+  base, ownership, interface, constraint, and verification data.
+- The parent lifecycle record starts after creation with real thread/host and
+  monitoring evidence, while the child worktree remains unresolved until the first exact
+  read returns and independently verifies it.
+- Environment selection uses returned `projectKind` and `supportsWorktrees`, independently
+  confirms Git/base state, and requests `{type: "worktree"}` only when explicitly
+  supported.
+- Every same-thread correction call explicitly supplies `model = gpt-5.6-luna` and
+  `thinking = max`, records returned routing metadata when present, and fails closed on a
+  contradictory route.
+
+### Second review repair: first-read worktree discovery
+
+A later Sol review found one remaining ordering contradiction: the contract required the
+child worktree before the first exact read even though the live host returned that path
+from the first exact read.
+
+| Phase | Command / evidence | Result |
+|---|---|---|
+| Red | Added the worktree-order regression before contract changes | Exit 1: `FAIL: first exact read may discover and pin the child worktree` |
+| Green | Same focused verifier after identity/worktree ordering was corrected | Exit 0: `LUNA THREAD CONTRACTS PASSED` |
+
+The corrected sequence is: creation or bounded discovery establishes the real thread and
+host; those identities permit the first wait/read operation; the first exact read may
+populate the unresolved child-worktree field; the parent independently verifies it; and
+all subsequent reads remain pinned to that same worktree. Exact worktree evidence remains
+mandatory before correction, acceptance, PR authorization, or dependent-task creation.

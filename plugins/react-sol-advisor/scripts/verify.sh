@@ -13,6 +13,7 @@ repo_dir=$(CDPATH= cd "$plugin_dir/../.." && pwd) || exit 1
 installer=$script_dir/install-agents.sh
 runtime_inspector=$script_dir/inspect-agent-runtime.sh
 test_support=$script_dir/verifier-test-support.sh
+luna_thread_verifier=$script_dir/verify-luna-thread-contracts.sh
 manifest=$plugin_dir/.codex-plugin/plugin.json
 marketplace=$repo_dir/.agents/plugins/marketplace.json
 template_dir=$plugin_dir/agents
@@ -22,12 +23,12 @@ sol_file=react-sol-advisor-sol-reviewer.toml
 terra_template=$template_dir/$terra_file
 sol_template=$template_dir/$sol_file
 
-for required in "$installer" "$runtime_inspector" "$test_support" "$manifest" "$marketplace" "$terra_template" "$sol_template"; do
+for required in "$installer" "$runtime_inspector" "$test_support" "$luna_thread_verifier" "$manifest" "$marketplace" "$terra_template" "$sol_template"; do
   test -f "$required" || fail "required file missing: $required"
 done
 
 jq empty "$manifest"
-[ "$(jq -r '.version' "$manifest")" = '0.1.0' ] || fail "manifest version is not 0.1.0"
+[ "$(jq -r '.version' "$manifest")" = '0.1.1' ] || fail "manifest version is not 0.1.1"
 [ "$(jq -r '.name' "$manifest")" = 'react-sol-advisor' ] || fail "manifest name is not react-sol-advisor"
 [ "$(jq -r '.interface.displayName' "$manifest")" = 'React Sol Advisor' ] || fail "manifest displayName is not React Sol Advisor"
 pass "manifest JSON and identity"
@@ -92,11 +93,11 @@ for f in "$luna_lane" "$thread_lifecycle"; do
   test -f "$f" || fail "missing lifecycle file: $f"
 done
 
-for token in "Capability preflight" "Complete Luna task packet" "Thread identity" "Monitoring and handoff" "Correction loop" "PR authorization" "Concurrency and dependency rules"; do
+for token in "Capability-adaptive monitoring" "Complete Luna task packet" "Real thread identity" "Completion monitoring and handoff" "Correction identity and loop" "PR authorization" "Concurrency and dependency rules"; do
   grep -Fq "$token" "$luna_lane" || fail "luna-task-lane.md missing $token"
 done
 
-for token in "Capability-gated archiving" "Supported archive operation exists" "No supported archive operation exists" "Parent final return" "Concurrency and dependency rules"; do
+for token in "Capability-gated archiving" "set_thread_archived" "No supported archive operation exists" "Parent final return" "Concurrency and dependency rules"; do
   grep -Fq "$token" "$thread_lifecycle" || fail "thread-lifecycle.md missing $token"
 done
 
@@ -166,6 +167,7 @@ sh -n "$test_support"
 sh -n "$script_dir/verify.sh"
 sh -n "$script_dir/verify-hardening.sh"
 sh -n "$script_dir/verify-contracts.sh"
+sh -n "$luna_thread_verifier"
 sh -n "$script_dir/verify-tmpdir-portability.sh"
 pass "shell syntax"
 
