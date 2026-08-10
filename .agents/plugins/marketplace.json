@@ -1,7 +1,7 @@
 {
   "name": "react-sol-advisor",
   "interface": {
-    "displayName": "React Sol Advisor"
+    "displayName": "Sol Development Advisor"
   },
   "plugins": [
     {

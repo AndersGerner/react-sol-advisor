@@ -1,5 +1,7 @@
 # Luna task-lane contract
 
+Sol Development Advisor uses this canonical contract for the Luna app-task lane.
+
 ## 1. Scope
 
 This contract governs user-visible GPT-5.6 Luna / Max Codex tasks. It is separate from
@@ -104,21 +106,22 @@ Required sections:
 
 ```text
 ROLE
-Implementation worker in React Sol Advisor's Luna lane. Follow settled architecture,
-own only the listed scope, use the React production contract, and escalate rather than
-redesign. Preserve concurrent work. Do not push or create/update a PR before explicit
-authorization.
+Implementation worker in Sol Development Advisor's Luna lane. Follow settled
+architecture, own only the listed scope, apply the mandatory generic delivery contract
+and selected profiles, and escalate rather than redesign. Preserve concurrent work. Do
+not push or create/update a PR before explicit authorization.
 
 OBJECTIVE
 Observable user outcome, why it matters, and final acceptance condition.
 
 ACCEPTANCE CRITERIA
-Numbered user-visible and regression requirements, including loading/error/empty and
-accessibility behavior where applicable.
+Numbered user-visible and regression requirements, including domain success, failure,
+retry, timeout, cancellation, rollback, recovery, loading/error/empty, and accessibility
+behavior only where applicable.
 
 REPOSITORY CONTEXT
-Actual framework/library versions, relevant architecture, applicable repository
-instructions, and canonical example paths.
+Actual versions, relevant architecture, applicable repository instructions, and up to
+two canonical example paths.
 
 FILES AND OWNERSHIP
 Exact owned files/modules and explicitly excluded files/modules.
@@ -127,12 +130,16 @@ INTERFACES
 Signatures, types, schemas, routes, APIs, events, behavior, and compatibility that must
 remain stable.
 
-REACT QUALITY CONTRACT
-Core rules plus selected platform/specialist references.
+DELIVERY PROFILES
+- Mandatory: [production-delivery](../../production-delivery/SKILL.md)
+- Conditional selected profiles from the canonical
+  [delivery-profiles.md](delivery-profiles.md) matrix, based only on owned paths and
+  acceptance. Profiles may combine; absence of React never blocks non-React work.
+- React and platform references only for an eligible owned React/UI slice.
 
 CONSTRAINTS
-Settled decisions, safety boundaries, excluded scope, concurrency warning, and the
-required Luna / Max route.
+Settled decisions, interfaces/invariants, domain failure modes, safety boundaries,
+excluded scope, concurrency warning, and the required Luna / Max route.
 
 STARTING STATE / BASE
 Exact project ID, returned projectKind and supportsWorktrees, requested environment,
@@ -149,9 +156,10 @@ create/update a PR before explicit parent authorization. Do not merge, rebase,
 cherry-pick, or alter another stack.
 
 STRUCTURED RETURN
-Use the schema in the React production contract. Report repository-observable state and
-verification, but do not invent thread, host, or completed-turn identities. The parent
-joins the child handoff with its lifecycle record.
+Use the production-delivery structured handoff: acceptance, files, tests, verification,
+Git, judgment calls, and gaps. Report repository-observable state and verification, but
+do not invent thread, host, or completed-turn identities. The parent joins the child
+handoff with its lifecycle record.
 ```
 
 The initial `create_thread` prompt must not contain or require a real `threadId`,
@@ -323,7 +331,7 @@ The parent may accept only after it has:
 - Rerun required commands and confirmed parent-run verification passes.
 - Resolved all corrections through the same real thread/host/worktree and a newly
   completed turn ID.
-- Evaluated acceptance criteria and the React production contract.
+- Evaluated acceptance criteria, mandatory production-delivery, and selected profiles.
 
 File presence, thread title, preview text, elapsed time, thread idle, or the child's own
 claim cannot replace these gates.

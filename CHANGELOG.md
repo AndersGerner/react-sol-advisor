@@ -1,6 +1,32 @@
 # Changelog
 
-All notable changes to React Sol Advisor will be documented in this file.
+All notable changes to Sol Development Advisor will be documented in this file.
+
+## 0.2.0 - 2026-08-10
+
+### Changed
+
+- Generalized the user-facing product name to Sol Development Advisor while retaining
+  the `react-sol-advisor` plugin name, repository path, native role IDs, and
+  `@react-sol-advisor` compatibility invocation.
+- Made domain-neutral `production-delivery` mandatory for every implementation stream,
+  with conditional, composable React/UI, TypeScript backend, Postgres/data, and
+  worker/integration specialist profiles.
+- Made `delivery-profiles.md` the canonical selection matrix for non-React, React, and
+  mixed work while retaining historical `QUALITY CONTRACT` records as compatible input.
+- Generalized routing packets and examples without changing the established Luna
+  lifecycle, model pins, risk thresholds, or economics.
+- Required every Luna-owned subpart of aggregate amber work to independently satisfy all
+  green criteria, while preserving mandatory fresh Sol review for every critical task,
+  including purely mechanical Luna contributions.
+
+### Added
+
+- Explicit safe `--upgrade-known` replacement for only the exact accepted 0.1.1 native
+  Terra/Sol pair, including a target-local ownership lock, per-role publication proof,
+  rollback CAS restoration, guarded backups, fail-closed recovery, and current/current
+  idempotence.
+- Focused generalization and known-native-role-upgrade acceptance verifiers.
 
 ## 0.1.1 - 2026-08-08
 

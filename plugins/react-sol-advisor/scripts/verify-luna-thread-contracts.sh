@@ -74,6 +74,7 @@ verify_path = "plugins/react-sol-advisor/scripts/verify.sh"
 contracts_path = "plugins/react-sol-advisor/scripts/verify-contracts.sh"
 invocations_path = "plugins/react-sol-advisor/examples/invocations.md"
 packet_path = "plugins/react-sol-advisor/examples/luna-task-packet.md"
+profiles_path = "plugins/react-sol-advisor/skills/orchestration/references/delivery-profiles.md"
 evidence_path = "docs/acceptance/2026-08-08-luna-read-thread-fallback.md"
 
 skill = read(skill_path)
@@ -89,6 +90,7 @@ verify = read(verify_path)
 contracts = read(contracts_path)
 invocations = read(invocations_path)
 packet = read(packet_path)
+profiles = read(profiles_path)
 
 # 1. wait_threads is preferred when usable, not a hard dependency.
 require(
@@ -486,15 +488,43 @@ require(
     ),
 )
 
-# Release and CI integration.
-require("plugin manifest version is 0.1.1", manifest.get("version") == "0.1.1")
+# Delivery selection is generic and packet-specific. The mandatory core applies to every
+# Luna implementation packet; specialist profiles are selected by owned paths and
+# acceptance, so a non-React packet cannot be rejected for lacking a React slice.
 require(
-    "repository verifier asserts version 0.1.1",
-    has_all(verify, "manifest version is not 0.1.1", "= '0.1.1'"),
+    "Luna packets require generic production delivery with conditional profiles, not mandatory React",
+    has_all(
+        lane,
+        "production-delivery",
+        "selected profiles",
+        "owned paths",
+        "acceptance",
+        "absence of React never blocks non-React work",
+    )
+    and has_all(
+        packet,
+        "production-delivery",
+        "delivery-profiles.md",
+        "selected",
+        "absence of React",
+    )
+    and has_all(
+        profiles,
+        "production-delivery",
+        "always",
+        "TypeScript is not auto-React",
+    ),
+)
+
+# Release and CI integration.
+require("plugin manifest version is 0.2.0", manifest.get("version") == "0.2.0")
+require(
+    "repository verifier asserts version 0.2.0",
+    has_all(verify, "manifest version is not 0.2.0", "= '0.2.0'"),
 )
 require(
-    "general contract verifier asserts version 0.1.1 and references the focused gate",
-    has_all(contracts, "0.1.1", "verify-luna-thread-contracts.sh"),
+    "general contract verifier asserts version 0.2.0 while retaining the 0.1.1 record and focused gate",
+    has_all(contracts, "0.2.0", "0.1.1", "verify-luna-thread-contracts.sh"),
 )
 require(
     "changelog records the 0.1.1 exact-thread compatibility release",
@@ -547,9 +577,9 @@ require(
 
 # 16. Native roles and their installer/runtime-inspector subsystem remain byte-identical.
 protected_hashes = {
-    "plugins/react-sol-advisor/agents/react-sol-advisor-terra-implementer.toml": "8cd2ed825f58574fd578832dd35f7932d365214db91ab84f79af7a64d3c863b1",
-    "plugins/react-sol-advisor/agents/react-sol-advisor-sol-reviewer.toml": "cf96fa0b638d879b072b896748e985ded79e68f2814e9eeab8b9c8c841776241",
-    "plugins/react-sol-advisor/scripts/install-agents.sh": "89fe8a6f0055d4c4141866792b2143b8730e1cae62fbd3f3218f95fe0db236d4",
+    "plugins/react-sol-advisor/agents/react-sol-advisor-terra-implementer.toml": "31ccc37af13e7a578436ec000d1867eaa0b638f8a1960e8261cc31a9fb77c9c8",
+    "plugins/react-sol-advisor/agents/react-sol-advisor-sol-reviewer.toml": "968f44ec684abe3b89f2ef6c974d0d1a259043c32022caced93df8e553fa0788",
+    "plugins/react-sol-advisor/scripts/install-agents.sh": "95b92faf617b3a23c11965f009ff802281d60943025524b169ea8fb1b075000b",
     "plugins/react-sol-advisor/scripts/inspect-agent-runtime.sh": "a186adfe471afa6b98000c6f5cd00185a6fdeb6abd575e32ddfd02a85b5d65a5",
 }
 for relative, expected in protected_hashes.items():

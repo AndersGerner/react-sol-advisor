@@ -1,9 +1,9 @@
 ---
 name: orchestration
-description: "React Sol Advisor Luna-first orchestration: green economy work routes to GPT-5.6 Luna / Max app tasks; amber/red or balanced/critical work escalates to Terra / High; fresh Sol review at commitment boundaries; no silent lane fallback."
+description: "Sol Development Advisor Luna-first orchestration: green economy work routes to GPT-5.6 Luna / Max app tasks; amber/red or balanced/critical work escalates to Terra / High; fresh Sol review at commitment boundaries; no silent lane fallback."
 ---
 
-# React Sol Advisor Orchestration
+# Sol Development Advisor Orchestration
 
 Act as the architect in the primary Codex session. Own the user's intent, routing
 decision, architecture, decomposition, complete task specification, parent
@@ -12,14 +12,18 @@ risk is the result of the classification in
 [references/model-routing.md](references/model-routing.md). The primary session never
 hands off architecture or acceptance to a child lane.
 
-The parent must emit a `ROUTING DECISION` block before every delegation. It is the
-single source of truth for the chosen policy, risk, lane, ownership, quality
-contract, escalation triggers, and PR policy.
+The parent must emit the route-decision block before every delegation. It is the
+single source of truth for the chosen policy, risk, lane, ownership, delivery profiles,
+escalation triggers, and PR policy.
 
 Read [references/role-contracts.md](references/role-contracts.md) before the first
 native delegation. Read [references/model-routing.md](references/model-routing.md)
 before the first classification. Read
 [references/luna-task-lane.md](references/luna-task-lane.md) before any Luna task.
+Read the canonical [delivery profile selection matrix](references/delivery-profiles.md)
+before selecting implementation requirements. Historical `QUALITY CONTRACT` blocks
+remain backward-compatible input and records, but new authoritative route decisions use
+`DELIVERY PROFILES`.
 
 ## Confirm the primary session
 
@@ -42,8 +46,8 @@ REASONS:
 - concise evidence-based reason
 OWNERSHIP:
 - exact files/modules or bounded responsibility
-QUALITY CONTRACT:
-- selected React/platform references
+DELIVERY PROFILES:
+- production-delivery plus conditional selected profiles
 ESCALATION TRIGGERS:
 - exact conditions that stop or change the lane
 PR POLICY: none | commit-only | draft-after-acceptance
@@ -57,17 +61,19 @@ The `LANE` field must be one of:
 - `decomposed-mixed` — Sol decomposes the task; green subparts go to Luna and the
   irreducible core goes to Terra.
 
-## React production-delivery contract
+## Delivery profile contract
 
-All React, Next.js, React Native, Expo, and TypeScript implementation work must carry the
-[react-production-delivery](../react-production-delivery/SKILL.md) contract. The Luna
-packet or Terra specification must either load the skill with a guaranteed invocation
-or include the core rules inline. The contract is non-negotiable: a delegated React
-task cannot omit it.
+Every implementation packet must carry the mandatory
+[production-delivery](../production-delivery/SKILL.md) contract. Select specialist
+profiles only from owned paths and observable acceptance criteria through the canonical
+[delivery-profiles.md](references/delivery-profiles.md) matrix; profiles may combine.
+React is conditional on an eligible owned React/UI slice. Absence of React never blocks
+TypeScript backend, data, worker, or integration work.
 
-Load the Next.js, React Native/Expo, and testing/accessibility references conditionally
-based on the task. Do not apply generic framework advice without checking installed
-versions.
+The Luna packet or Terra specification must name the generic contract and every selected
+profile, with exact ownership and exclusions. Load the Next.js, React Native/Expo, and
+testing/accessibility references only when the selected React profile requires them.
+Do not apply generic framework advice without checking installed versions.
 
 ## Classify risk and choose a policy
 
@@ -77,11 +83,14 @@ Use the green/amber/red criteria and common examples in
 - **economy** (default): green -> Luna / Max; amber -> Sol decomposition with Luna
   subparts and Terra for the irreducible core; red -> Sol architecture then Terra /
   High plus fresh Sol review.
-- **balanced**: green -> Luna / Max; amber -> Terra / High or explicitly bounded Luna
-  subparts; red -> Terra / High plus fresh Sol review.
+- **balanced**: green -> Luna / Max; amber -> Terra / High or `decomposed-mixed` only
+  when each extracted Luna subpart independently satisfies every green criterion; red
+  -> Terra / High plus fresh Sol review.
 - **critical**: green -> Terra / High unless the parent explicitly identifies a purely
-  mechanical Luna subtask; amber -> Terra / High plus fresh Sol review; red -> Sol
-  architecture, Terra / High implementation, mandatory fresh Sol reviewer.
+  mechanical subtask that independently satisfies every green criterion; amber -> Terra
+  / High plus fresh Sol review; red -> Sol architecture, Terra / High implementation,
+  mandatory fresh Sol reviewer. Every critical task receives fresh Sol review after
+  parent verification, including a wholly or partly Luna-implemented mechanical diff.
 
 For amber work in economy mode, prefer `decomposed-mixed` over sending the entire task
 to Terra when clean ownership boundaries exist.
@@ -90,8 +99,8 @@ to Terra when clean ownership boundaries exist.
 
 If the chosen lane is unavailable, do not silently switch to a cheaper or different
 lane. Report the missing capability, preserve the intended route in the report, state
-the exact alternative and its cost/risk implication, and require explicit user
-authorization before switching to a more expensive lane.
+the exact alternative and its cost/risk implication, and require explicit user authorization
+before switching to a more expensive lane.
 
 ## Preflight the native companion custom agents
 
@@ -262,10 +271,12 @@ verification before final acceptance.
 
 ## Route Terra / High implementation
 
-Use the Terra / High native lane for red economy work, balanced amber or red work that
-is not explicitly decomposed to Luna, and critical work except explicitly identified
-purely mechanical Luna subtasks. Balanced green work remains in the Luna lane. There is
-no second native implementation or fallback lane.
+Use the Terra / High native lane for red economy work, balanced amber or red work whose
+subparts do not independently satisfy every green criterion, and critical work except
+explicitly identified purely mechanical Luna subtasks that independently pass every
+green criterion. Balanced green work remains in the Luna lane. A bounded queue lease,
+orphan-reconciliation transition, or unsettled stale-response race remains Terra-owned
+amber work. There is no second native implementation or fallback lane.
 
 Spawn exactly:
 
@@ -298,13 +309,13 @@ fork_turns: none
 
 The role pins Sol / High and requests read-only isolation. Omit per-spawn model and
 reasoning fields. Observe actual routing, sandbox, and permission metadata. The primary
-session remains responsible for the decision. Do not route the Luna task lane through
-this native reviewer.
+session remains responsible for the decision. Do not route non-critical
+economy/balanced Luna implementation through this native reviewer.
 
 ## Require fresh Sol review only at commitment boundaries
 
-A fresh native Sol review is required after Terra implementation only when the work
-crosses a commitment boundary or the risk class demands it:
+A fresh native Sol review is required after parent verification when the work crosses a
+commitment boundary or the risk class demands it:
 
 - **Red** work in any policy.
 - **Critical** work by definition.
@@ -343,10 +354,13 @@ Apply the observed sandbox policy:
 - If hard isolation is required, the sandbox is unobservable, or any mutation occurs,
   stop the review. Do not claim read-only isolation or hide the mutation.
 
-For the Luna task lane, the primary Sol task itself performs the final review and
-acceptance after the preferred `wait_threads -> read_thread` path or the supported
-exact-thread `read_thread` fallback, actual child-worktree/diff inspection, and rerun
-verification. Do not spawn the native Sol reviewer for that lane. Any correction
+For non-critical economy/balanced Luna work, the primary Sol task itself performs the
+final review and acceptance after the preferred `wait_threads -> read_thread` path or
+the supported exact-thread `read_thread` fallback, actual child-worktree/diff
+inspection, and rerun verification. Do not spawn the native Sol reviewer for that lane
+unless a separate commitment-boundary trigger applies. Critical policy always applies
+that trigger: after parent verification, a fresh native Sol reviewer inspects the
+accumulated task diff, including any Luna-owned mechanical contribution. Any correction
 invalidates the prior child handoff; require a different newly completed turn on the
 same real thread/host/worktree before accepting it or authorizing PR creation.
 

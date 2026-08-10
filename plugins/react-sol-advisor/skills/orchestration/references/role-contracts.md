@@ -1,6 +1,6 @@
 # Native Codex role contracts
 
-Use these contracts with React Sol Advisor's namespaced, role-pinned native custom agents.
+Use these contracts with Sol Development Advisor's namespaced, role-pinned native custom agents.
 They do not launch a nested Codex CLI or change global default-subagent routing. The
 separate [Luna task-lane contract](luna-task-lane.md) covers user-visible app tasks;
 it is not a native custom-agent role and must not be represented by a companion TOML.
@@ -26,23 +26,49 @@ pinned by custom-agent TOML, so omit native per-spawn overrides.
 
 ## Shared implementation contract
 
-Every Terra prompt must contain all required sections. The React production-delivery
-contract is non-negotiable for React, Next.js, React Native, Expo, and TypeScript work.
+Every Terra prompt must contain all required sections. `production-delivery` is mandatory
+for every implementation task. Select conditional specialist profiles from the canonical
+[delivery-profiles.md](delivery-profiles.md) matrix using owned paths and acceptance;
+profiles may combine, and absence of React never blocks non-React work. Historical
+`QUALITY CONTRACT` blocks remain backward-compatible input and records, while every new
+authoritative packet uses `DELIVERY PROFILES`.
+
+The parent includes its authoritative route decision with each native specification:
+
+```text
+ROUTING DECISION
+POLICY: economy | balanced | critical
+RISK: green | amber | red
+LANE: luna-app-task | terra-native | sol-parent-only | decomposed-mixed
+REASONS:
+- concise evidence-based reason
+OWNERSHIP:
+- exact files/modules or bounded responsibility
+DELIVERY PROFILES:
+- production-delivery plus conditional selected profiles
+ESCALATION TRIGGERS:
+- exact conditions that stop or change the lane
+PR POLICY: none | commit-only | draft-after-acceptance
+```
 
 ~~~text
 OBJECTIVE
 Observable user outcome, why it matters, and the final acceptance condition.
 
 ACCEPTANCE CRITERIA
-Numbered user-visible and regression requirements, including loading/error/empty and
-accessibility behavior where applicable.
+Numbered user-visible and regression requirements, including success, failure, retry,
+timeout, cancellation, rollback, recovery, loading/error/empty, and accessibility
+behavior when relevant.
 
 REPOSITORY CONTEXT
-Actual framework/library versions, applicable repository instructions/AGENTS.md, canonical
-example paths, and any relevant architecture or state conventions.
+Actual framework/library versions, applicable repository instructions/AGENTS.md, up to
+two canonical example paths, and any relevant architecture or state conventions.
 
 FILES AND OWNERSHIP
 You own only:
+- <exact file or module>
+
+You explicitly exclude:
 - <exact file or module>
 
 You are not alone in the codebase. Other agents or the user may be editing concurrently.
@@ -50,15 +76,18 @@ Preserve their edits, do not revert unrelated work, and adapt to changes already
 Do not modify files outside your ownership.
 
 INTERFACES
-- <Signatures, types, schemas, commands, or behavior that must remain compatible.>
+- <Signatures, types, schemas, commands, behavior, and invariants that must remain compatible.>
 
-REACT QUALITY CONTRACT
-Follow the contract in
-[react-production-delivery](../../react-production-delivery/SKILL.md)
-and load the Next.js, React Native/Expo, and testing/accessibility references when the
-task involves those areas. Apply the pre-edit requirements, core implementation rules,
-verification order, and structured return. Do not apply generic framework advice without
-checking installed versions.
+DELIVERY PROFILES
+- Mandatory: [production-delivery](../../production-delivery/SKILL.md)
+- Conditional selected profiles from [delivery-profiles.md](delivery-profiles.md):
+  <React/UI, TypeScript backend, Postgres/data, worker/integration, or combinations>
+- React profile and its Next.js, React Native/Expo, and testing/accessibility references
+  apply only to an eligible owned React/UI slice.
+
+DOMAIN FAILURE MODES
+- <Success/failure/retry/timeout/cancellation/rollback/recovery behavior relevant to the
+  owned domain, including operator or user-visible outcome.>
 
 CONSTRAINTS
 - <Repository conventions, safety boundaries, excluded scope, and settled decisions.>
@@ -72,7 +101,7 @@ VERIFICATION
   Success: <concrete expected evidence>
 
 STRUCTURED RETURN
-Use the React production-delivery structured return and include:
+Use the production-delivery structured handoff and include:
 
 STATUS: complete | partial | blocked
 OBJECTIVE: one-line restatement
@@ -179,14 +208,13 @@ Prompt:
 
 ~~~text
 ROLE
-Act as React Sol Advisor's sole implementation worker. Resolve the supplied specification
+Act as Sol Development Advisor's sole implementation worker. Resolve the supplied specification
 within the settled architecture, preserve every stated interface and constraint, and
 surface ambiguity instead of redesigning the architecture.
 
-For React, Next.js, React Native, Expo, or TypeScript work, the React production-delivery
-contract is mandatory. Load it from
-[react-production-delivery](../../react-production-delivery/SKILL.md)
-and apply the selected platform/testing references conditionally.
+For every implementation task, production-delivery is mandatory. Load only the parent-selected
+profiles named in `DELIVERY PROFILES`; do not select/change profiles,
+architecture, or routing. Do not require React for non-React work.
 
 <paste and complete the Shared implementation contract>
 ~~~

@@ -33,5 +33,11 @@ jobs:
       - name: Run TMPDIR portability regressions
         run: sh plugins/react-sol-advisor/scripts/verify-tmpdir-portability.sh
 
+      - name: Run Sol Development Advisor generalization acceptance
+        run: sh plugins/react-sol-advisor/scripts/verify-generalization.sh
+
+      - name: Run native role upgrade acceptance
+        run: sh plugins/react-sol-advisor/scripts/verify-agent-upgrade.sh
+
       - name: Check whitespace in the branch change set
         run: git diff --check origin/main...HEAD

@@ -1,156 +1,110 @@
 ---
 name: react-production-delivery
 description: >
-  Production delivery contract for React, Next.js, React Native, Expo, and TypeScript.
-  Enforces repository alignment, behavioral acceptance, state/effect correctness,
-  accessibility, tests, focused scope, and evidence-backed verification.
+  React, Next.js, React Native, Expo, and UI specialist delivery profile. Use with
+  production-delivery for owned rendering, client/server, or native/JavaScript work.
 ---
 
-# React production-delivery contract
+# React production delivery profile
 
-Use this skill when implementing, fixing, refactoring, or reviewing React, Next.js,
-React Native, Expo, or TypeScript UI code. It establishes a mandatory
-senior-engineering workflow and loads focused references only when the task requires
-them.
+Use [production-delivery](../production-delivery/SKILL.md) for every implementation
+task. Add this specialist profile only when an owned React, Next.js, React Native,
+Expo, or UI path and its acceptance criteria require it. Non-React work does not load
+this profile merely because it uses TypeScript.
 
-## Pre-edit requirements
+## React pre-edit ownership
 
-Before editing, the worker must:
+Before editing, identify component and state ownership; the server/client or native/JS
+boundary; data-fetch and mutation ownership; UI loading, empty, error, success, and
+retry behavior; accessibility behavior; async race, cancellation, and cleanup risk;
+and public compatibility constraints. Return a blocker when these cannot be resolved
+from the task and repository evidence rather than inventing a UI architecture.
 
-1. Read applicable repository instructions.
-2. Inspect actual framework and package versions.
-3. Convert the request into observable acceptance criteria.
-4. Find up to two canonical repository examples and explain why they are relevant.
-5. Identify:
-   - Component and state ownership
-   - Server/client or native/JavaScript boundaries
-   - Data-fetching and mutation ownership
-   - Loading, empty, error, success, and retry behavior
-   - Accessibility behavior
-   - Async race, cancellation, and cleanup risk
-   - Public compatibility constraints
-6. Name the expected changed-file scope.
-7. Define focused tests and verification before implementation.
-8. Return a blocker instead of inventing architecture when these cannot be resolved.
+## React architecture and rendering
 
-## Core implementation rules
+Follow canonical component and rendering architecture from the repository. Keep domain
+logic outside rendering components, preserve dependency direction, and maintain clear
+client/server ownership for data, authorization, rendering, and mutations. For native
+work, maintain the matching native/JavaScript boundary and platform ownership.
 
-### Architecture and separation of concerns
+Keep form state, URL state, server state, durable client state, and transient UI state
+separate. Derive values during rendering rather than synchronizing derived state in
+effects. Use a new abstraction only when the owned behavior needs one or existing
+architecture already owns it.
 
-- Follow canonical repository architecture over generic personal preference.
-- Keep domain logic out of rendering components.
-- Keep server state in the repository's established server-state layer.
-- Keep form state, URL state, server state, and durable client state separate.
-- Preserve dependency direction and package boundaries.
-- Introduce a new abstraction only when the task requires it, an existing abstraction
-  should own the behavior, or concrete duplication would otherwise be created.
-- Preserve public APIs unless the packet explicitly authorizes a change.
+Server state remains in the repository's established server-state layer. Do not move it
+into component-local state or duplicate it in another client cache without an explicit
+repository convention that owns the synchronization.
 
-### State, hooks, and effects
+## State, hooks, and effects
 
-- Derive values during render instead of synchronizing derived state through effects.
-- Use effects only to synchronize with external systems.
-- Keep hooks unconditional and dependencies correct.
-- Move interaction-specific logic to event handlers.
-- Use functional state updates when the next state depends on the prior state.
-- Clean up subscriptions, listeners, timers, observers, and async work exactly.
-- Avoid stale-response writes and race conditions where requests can overlap.
-- Do not add memoization without a concrete measured or structural reason.
-- Do not define components inside components when it causes unstable identity.
-- Use stable identity-based list keys.
+Keep hooks unconditional and dependencies correct. Use effects only to synchronize
+with an external system; move interaction-specific behavior to event handlers. Use
+functional state updates when the next value depends on prior state, and clean up
+subscriptions, listeners, timers, observers, and async work exactly.
 
-### Async data and mutations
+Prevent stale-result writes when inputs change quickly. Do not add memoization without
+a structural or measured reason. Avoid defining unstable components inside components,
+and use stable identity-based list keys.
 
-- Use the repository's established query/mutation library and key conventions.
-- Parallelize independent work; preserve required ordering for dependent work.
-- Define loading, empty, error, retry, and success behavior explicitly.
-- Prevent duplicate destructive actions.
-- Handle optimistic updates with rollback and invalidation semantics when used.
-- Treat authorization as a server-side boundary, not a UI condition.
-- Preserve cancellation or stale-result protection where the user can change inputs
-  quickly.
+## UI data and interaction behavior
 
-### TypeScript
+Use the repository's established query and mutation layer and key conventions. Define
+loading, empty, error, retry, and success UI behavior. Preserve cancellation or
+stale-result protection where requests overlap, avoid duplicate destructive actions,
+and define optimistic rollback and invalidation when optimistic behavior exists.
 
-- Preserve strictness.
-- Do not use `any` to bypass a design problem.
-- Narrow `unknown` at system boundaries.
-- Avoid unsafe assertions unless a runtime invariant is verified and documented.
-- Reuse canonical domain types rather than duplicating shapes.
-- Keep discriminated unions exhaustive.
-- Ensure generated and external types are not edited manually unless the project
-  explicitly does so.
+Parallelize independent UI data work and preserve ordering for dependent work. State
+which request gates another request or mutation so rendering does not imply a false
+ordering guarantee.
 
-### Accessibility
+Treat authorization as a client/server boundary enforced by the server, not a UI-only
+condition. Preserve repository error boundaries, telemetry, and user-safe diagnostics.
 
-- Prefer native semantic elements and platform controls.
-- Provide accessible names, descriptions, states, and errors.
-- Preserve keyboard operation, focus order, and visible focus.
-- Restore or move focus intentionally after modal, removal, navigation, and
-  validation events.
-- Use live regions only for meaningful asynchronous updates.
-- Respect reduced motion and dynamic text/font scaling where applicable.
-- Do not rely on color alone.
-- Test the actual interaction, not only static attributes.
+### React and TypeScript UI safety
 
-### Error handling and observability
+Preserve strictness. Do not use `any` as an escape hatch; narrow `unknown` at external
+boundaries. Use unsafe assertions only with a verified invariant, reuse canonical
+domain types rather than duplicating shapes, and keep discriminated unions exhaustive.
+Never manually edit generated or external types unless the repository explicitly
+establishes that as its convention.
 
-- Follow repository error boundaries, logging, analytics, and monitoring conventions.
-- Do not swallow failures.
-- Avoid leaking secrets or sensitive data into client logs.
-- Distinguish user-facing recoverable errors from developer diagnostics.
-- Preserve correlation and metadata conventions when present.
+## Accessibility and platform behavior
 
-### Scope discipline
+Use semantic controls and accessible names, descriptions, states, and errors. Preserve
+keyboard operation, focus order, visible focus, and intentional focus movement after
+modal, removal, navigation, or validation changes. Do not rely on color alone; respect
+reduced motion and dynamic text/font scaling. Test real interaction behavior, not only
+static attributes. Use live regions only for meaningful asynchronous updates.
 
-- Make the smallest coherent change.
-- Do not mix unrelated cleanup or formatting into the feature.
-- Preserve concurrent work.
-- Do not edit outside owned files without returning a blocker.
-- Inspect the final diff for accidental API changes, duplicate logic, unsafe
-  assertions, missing states, and unrelated changes.
+## Error handling, observability, and final inspection
+
+Follow repository logging, analytics, and monitoring conventions. Never swallow
+failures, avoid secrets or sensitive client logs, and distinguish user-recoverable
+errors from developer diagnostics. Preserve correlation and metadata conventions when
+reporting a client/server or native failure.
+
+Before handoff, inspect the final React diff for accidental API changes, duplicate
+logic, unsafe assertions, missing UI states, and unrelated changes.
 
 ## Conditional references
 
-- Load [references/nextjs.md](references/nextjs.md) when the task involves App Router,
-  server components, route handlers, server actions, caching, revalidation, streaming,
-  metadata, or bundle boundaries.
-- Load [references/react-native-expo.md](references/react-native-expo.md) when the
-  task involves React Native, Expo, navigation, lists, animations, native APIs, app
-  lifecycle, linking, offline behavior, background work, or platform-specific UI.
+- Load [references/nextjs.md](references/nextjs.md) for App Router, server components,
+  route handlers, server actions, caching, revalidation, streaming, metadata, or
+  bundle boundaries.
+- Load [references/react-native-expo.md](references/react-native-expo.md) for React
+  Native, Expo, navigation, lists, animations, native APIs, lifecycle, linking,
+  offline behavior, background work, or platform-specific UI.
 - Load [references/testing-accessibility.md](references/testing-accessibility.md) for
   the testing contract, accessibility checklist, and verification order.
 
-Do not apply generic "latest" framework advice without checking the repository version
-and current official documentation.
+Do not apply generic framework advice without checking actual installed versions and
+the repository's canonical implementation patterns.
 
-## Specialist skill selection
+## Conditional specialist selection
 
-The parent may discover installed specialist skills by description and select only those
-relevant to the task, for example:
-
-- React/Next performance
-- Expo Router/native UI
-- React Native performance
-- Data fetching
-- Accessibility
-- Testing
-
-The task packet records which skills were selected. Do not assume a third-party skill
-name or availability. The core contract in this plugin remains the fallback and cannot
-be omitted.
-
-## Structured worker return
-
-```text
-STATUS: complete | partial | blocked
-OBJECTIVE: one-line outcome
-ACCEPTANCE: each criterion with pass/fail evidence
-CANONICAL EXAMPLES: paths used
-CHANGES: file-by-file summary from actual diff
-TESTS: tests added/changed and why
-VERIFIED: exact commands and concrete results
-GIT: branch, base, changed files, commit state
-JUDGMENT CALLS: decisions left open by packet, or none
-GAPS: unfinished work, blockers, or none
-```
+The [delivery profiles](../orchestration/references/delivery-profiles.md) matrix is the
+mandatory canonical selection authority. It can require additional specialist skills
+for the owned paths and acceptance criteria. Discover optional specialist skills by
+their actual description and availability; do not assume a third-party skill name or
+that a specialist is installed.

@@ -8,11 +8,14 @@ worktree when the first exact read reveals it.
 
 ```text
 ROLE
-Act as React Sol Advisor's Luna implementation worker. Implement the settled change
-inside the owned scope. Use the core React production-delivery contract and the
-selected accessibility/testing reference. Do not redesign architecture, modify outside
-ownership, push, or create/update a PR without explicit parent authorization. Preserve
-concurrent work and report a blocker when repository evidence contradicts this packet.
+Act as Sol Development Advisor's Luna implementation worker. Implement the settled
+change inside the owned scope. Use mandatory production-delivery and the selected
+conditional profiles from
+[delivery-profiles.md](../skills/orchestration/references/delivery-profiles.md). This
+packet selects React because its owned UI slice requires it; absence of React must never
+block a non-React packet. Do not redesign architecture, modify outside ownership, push, or
+create/update a PR without explicit parent authorization. Preserve concurrent work and
+report a blocker when repository evidence contradicts this packet.
 
 OBJECTIVE
 Add a keyboard-accessible vehicle-status filter to the portal list. The selected value
@@ -34,7 +37,6 @@ REPOSITORY CONTEXT
 - Repository instructions: list exact AGENTS.md files read.
 - Canonical URL filter: `apps/portal/src/features/vehicles/filters/leasing-status-filter.tsx`
 - Canonical query mapping: `apps/portal/src/features/vehicles/queries/vehicle-list-query.ts`
-- Canonical test helper: `apps/portal/src/features/vehicles/__tests__/render-vehicle-list.tsx`
 
 FILES AND OWNERSHIP
 You own only:
@@ -55,7 +57,11 @@ INTERFACES
 - Preserve unrelated URL parameters.
 - Use the repository's current router/search-param helper.
 
-REACT QUALITY CONTRACT
+DELIVERY PROFILES
+- Mandatory: [production-delivery](../skills/production-delivery/SKILL.md)
+- Selected: [react-production-delivery](../skills/react-production-delivery/SKILL.md)
+  because the owned React/UI slice has URL state and accessibility acceptance.
+- Apply Next.js and testing/accessibility references conditionally for the owned paths.
 - Derive selected state from validated URL state; do not mirror it through an effect.
 - Use semantic controls and an accessible group/name.
 - Keep interaction logic in event handlers.
@@ -68,6 +74,9 @@ CONSTRAINTS
 - No unrelated refactor or formatting.
 - This task must use GPT-5.6 Luna with Max reasoning.
 - Stop if the canonical filter uses a different ownership model than described.
+- Domain failure modes: invalid URL values normalize safely; request cancellation and
+  stale results cannot overwrite current URL state; no rollback is needed because this
+  packet performs no mutation.
 
 STARTING STATE / BASE
 - Project ID: <actual returned ID from the exact intended project>

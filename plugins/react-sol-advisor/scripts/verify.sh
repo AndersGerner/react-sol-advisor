@@ -1,5 +1,5 @@
 #!/bin/sh
-# React Sol Advisor repository verification (Task 2 focused: role subsystem).
+# Sol Development Advisor repository verification (native-role subsystem).
 
 set -eu
 
@@ -28,14 +28,14 @@ for required in "$installer" "$runtime_inspector" "$test_support" "$luna_thread_
 done
 
 jq empty "$manifest"
-[ "$(jq -r '.version' "$manifest")" = '0.1.1' ] || fail "manifest version is not 0.1.1"
+[ "$(jq -r '.version' "$manifest")" = '0.2.0' ] || fail "manifest version is not 0.2.0"
 [ "$(jq -r '.name' "$manifest")" = 'react-sol-advisor' ] || fail "manifest name is not react-sol-advisor"
-[ "$(jq -r '.interface.displayName' "$manifest")" = 'React Sol Advisor' ] || fail "manifest displayName is not React Sol Advisor"
+[ "$(jq -r '.interface.displayName' "$manifest")" = 'Sol Development Advisor' ] || fail "manifest displayName is not Sol Development Advisor"
 pass "manifest JSON and identity"
 
 jq empty "$marketplace"
 [ "$(jq -r '.name' "$marketplace")" = 'react-sol-advisor' ] || fail "marketplace name is not react-sol-advisor"
-[ "$(jq -r '.interface.displayName' "$marketplace")" = 'React Sol Advisor' ] || fail "marketplace displayName is not React Sol Advisor"
+[ "$(jq -r '.interface.displayName' "$marketplace")" = 'Sol Development Advisor' ] || fail "marketplace displayName is not Sol Development Advisor"
 [ "$(jq -r '.plugins[0].name' "$marketplace")" = 'react-sol-advisor' ] || fail "marketplace plugin name is not react-sol-advisor"
 [ "$(jq -r '.plugins[0].source.path' "$marketplace")" = './plugins/react-sol-advisor' ] || fail "marketplace plugin path is not ./plugins/react-sol-advisor"
 pass "marketplace JSON and identity"
@@ -71,12 +71,11 @@ for f in "$react_skill" "$react_next" "$react_native" "$react_testing"; do
   test -f "$f" || fail "missing React production-delivery file: $f"
 done
 
-for token in "Pre-edit requirements" "Core implementation rules" "Conditional references" "Specialist skill selection" "Structured worker return"; do
+for token in "React pre-edit ownership" "React architecture and rendering" "Conditional references" "Conditional specialist selection"; do
   grep -Fq "$token" "$react_skill" || fail "react-production-delivery/SKILL.md missing $token"
 done
 
-grep -Fq "react-production-delivery" "$skill_md" || fail "orchestration SKILL.md does not reference react-production-delivery"
-grep -Fq "../react-production-delivery/SKILL.md" "$skill_md" || fail "orchestration SKILL.md does not link to react-production-delivery"
+grep -Fq "delivery-profiles.md" "$skill_md" || fail "orchestration SKILL.md does not link to canonical delivery-profiles.md"
 for token in "server components" "caching" "revalidation" "Serializable server-to-client props"; do
   grep -Fq "$token" "$react_next" || fail "nextjs.md missing $token"
 done
@@ -114,7 +113,7 @@ pass "Luna task lifecycle and thread-lifecycle references are present"
 
 # Semantic contract checks (feedback-driven)
 role_contracts=$plugin_dir/skills/orchestration/references/role-contracts.md
-for token in "Green economy work uses the Luna task lane by default" "ACCEPTANCE CRITERIA" "REPOSITORY CONTEXT" "REACT QUALITY CONTRACT" "STRUCTURED RETURN"; do
+for token in "Green economy work uses the Luna task lane by default" "ACCEPTANCE CRITERIA" "REPOSITORY CONTEXT" "DELIVERY PROFILES" "STRUCTURED RETURN"; do
   grep -Fq "$token" "$role_contracts" || fail "role-contracts.md missing $token"
 done
 
@@ -348,6 +347,8 @@ LICENSE
 BUILD-PROGRESS.md
 plugins/sol-advisor
 plugins/react-sol-advisor/scripts/verify.sh
+plugins/react-sol-advisor/scripts/verify-agent-upgrade.sh
+plugins/react-sol-advisor/scripts/verify-generalization.sh
 plugins/react-sol-advisor/scripts/install-agents.sh
 "
 
