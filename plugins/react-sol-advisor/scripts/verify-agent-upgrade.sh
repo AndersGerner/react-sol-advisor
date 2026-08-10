@@ -390,6 +390,81 @@ else
   assert_no_upgrade_artifacts "TERM after Terra backup" "$term_backup_target"
 fi
 
+# Deliver TERM from verifier-owned command wrappers after each filesystem mutation has
+# succeeded but before the parent shell can execute the following ownership assignment.
+# Every boundary must restore exact old/old state and remove the owned lock/transaction.
+term_transition_bin=$tmp_dir/term-transition-bin
+mkdir "$term_transition_bin" || record_failure "could not prepare TERM transition wrappers"
+real_mkdir=$(command -v mkdir) || record_failure "could not resolve system mkdir"
+real_mv_for_term=$(command -v mv) || record_failure "could not resolve system mv for TERM transitions"
+real_ln_for_term=$(command -v ln) || record_failure "could not resolve system ln for TERM transitions"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'if [ "$RSA_TEST_TERM_KIND" = lock ] && [ "$1" = "$RSA_TEST_LOCK" ]; then' \
+  '  "$RSA_TEST_REAL_MKDIR" "$@" || exit 1' \
+  '  kill -TERM "$PPID"' \
+  '  exit 0' \
+  'fi' \
+  'exec "$RSA_TEST_REAL_MKDIR" "$@"' > "$term_transition_bin/mkdir" || record_failure "could not create TERM mkdir wrapper"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$RSA_TEST_TERM_KIND:$1:$2" in' \
+  '  terra-displace:"$RSA_TEST_TERRA_DEST":*/terra.displaced|sol-displace:"$RSA_TEST_SOL_DEST":*/sol.displaced)' \
+  '    "$RSA_TEST_REAL_MV" "$@" || exit 1' \
+  '    kill -TERM "$PPID"' \
+  '    exit 0' \
+  '    ;;' \
+  'esac' \
+  'exec "$RSA_TEST_REAL_MV" "$@"' > "$term_transition_bin/mv" || record_failure "could not create TERM mv wrapper"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$RSA_TEST_TERM_KIND:$1:$2" in' \
+  '  terra-publish:*/terra.stage:"$RSA_TEST_TERRA_DEST"|sol-publish:*/sol.stage:"$RSA_TEST_SOL_DEST")' \
+  '    "$RSA_TEST_REAL_LN" "$@" || exit 1' \
+  '    kill -TERM "$PPID"' \
+  '    exit 0' \
+  '    ;;' \
+  'esac' \
+  'exec "$RSA_TEST_REAL_LN" "$@"' > "$term_transition_bin/ln" || record_failure "could not create TERM ln wrapper"
+chmod 755 "$term_transition_bin/mkdir" "$term_transition_bin/mv" "$term_transition_bin/ln" ||
+  record_failure "could not make TERM transition wrappers executable"
+
+run_term_transition_case() {
+  kind=$1
+  label=$2
+  target=$tmp_dir/term-transition-$kind
+  prepare_stale_pair "$target" || {
+    record_failure "could not prepare $label fixture"
+    return
+  }
+  add_upstream_sentinels "$target" || {
+    record_failure "could not prepare $label sentinels"
+    return
+  }
+  before=$(target_signature "$target")
+  if output=$(RSA_TEST_TERM_KIND="$kind" RSA_TEST_LOCK="$target/.react-sol-advisor-upgrade-lock" \
+    RSA_TEST_TERRA_DEST="$target/$terra_file" RSA_TEST_SOL_DEST="$target/$sol_file" \
+    RSA_TEST_REAL_MKDIR="$real_mkdir" RSA_TEST_REAL_MV="$real_mv_for_term" \
+    RSA_TEST_REAL_LN="$real_ln_for_term" PATH="$term_transition_bin:$PATH" \
+    sh "$installer" --target-dir "$target" --upgrade-known 2>&1); then
+    record_failure "$label was accepted"
+  elif ! printf '%s\n' "$output" | grep -Fq "upgrade interrupted; attempting guarded rollback"; then
+    record_failure "$label omitted the guarded interruption marker: $output"
+  elif ! cmp -s "$terra_fixture" "$target/$terra_file" || ! cmp -s "$sol_fixture" "$target/$sol_file"; then
+    record_failure "$label did not restore exact old/old state"
+  elif [ "$(target_signature "$target")" != "$before" ]; then
+    record_failure "$label did not restore the exact pre-upgrade target signature"
+  else
+    assert_no_upgrade_artifacts "$label" "$target"
+  fi
+}
+
+run_term_transition_case lock "TERM after lock creation before ownership recording"
+run_term_transition_case terra-displace "TERM after Terra displacement before ownership recording"
+run_term_transition_case sol-displace "TERM after Sol displacement before ownership recording"
+run_term_transition_case terra-publish "TERM after Terra publication before ownership recording"
+run_term_transition_case sol-publish "TERM after Sol publication before ownership recording"
+
 unreadable_target=$tmp_dir/unreadable-digest
 prepare_stale_pair "$unreadable_target" || record_failure "could not prepare unreadable digest fixture"
 add_upstream_sentinels "$unreadable_target" || record_failure "could not prepare unreadable digest sentinels"
@@ -456,6 +531,7 @@ printf '%s\n' \
   '#!/bin/sh' \
   'case "$RSA_TEST_ID:$1:$2" in' \
   '  B:"$RSA_TEST_TERRA_DEST":*/terra.displaced)' \
+  '    : > "$RSA_TEST_CONTROL/b-at-terra-displace"' \
   '    attempts=0' \
   '    while { ! cmp -s "$RSA_TEST_TERRA_CURRENT" "$RSA_TEST_TERRA_DEST" || ! cmp -s "$RSA_TEST_SOL_CURRENT" "$RSA_TEST_SOL_DEST"; } && [ "$attempts" -lt 200 ]; do' \
   '      sleep 0.05' \
@@ -485,7 +561,17 @@ wait_for_path "$concurrent_control/stage-B" "concurrent process B staging" || tr
 : > "$concurrent_control/release-stage-A"
 wait_for_path "$concurrent_control/a-at-backup" "process A target ownership" || true
 : > "$concurrent_control/release-stage-B"
-sleep 0.2
+handshake_attempts=0
+while ! grep -Fq "upgrade lock is already held" "$concurrent_b_output" 2>/dev/null &&
+      [ ! -e "$concurrent_control/b-at-terra-displace" ] &&
+      [ "$handshake_attempts" -lt 200 ]; do
+  sleep 0.05
+  handshake_attempts=$((handshake_attempts + 1))
+done
+if ! grep -Fq "upgrade lock is already held" "$concurrent_b_output" 2>/dev/null &&
+   [ ! -e "$concurrent_control/b-at-terra-displace" ]; then
+  record_failure "timed out before process B produced a lock refusal or unsafe mutation handshake"
+fi
 : > "$concurrent_control/release-a-backup"
 if wait "$concurrent_a_pid"; then concurrent_a_status=0; else concurrent_a_status=$?; fi
 if wait "$concurrent_b_pid"; then concurrent_b_status=0; else concurrent_b_status=$?; fi

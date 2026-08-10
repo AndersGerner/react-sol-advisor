@@ -278,6 +278,7 @@ if [ "$upgrade_known" -eq 1 ]; then
   upgrade_lock=$target_dir/.react-sol-advisor-upgrade-lock
   lock_owner_dir=''
   lock_acquired=0
+  upgrade_deferred_signal=0
   terra_current=$(sha256_file "$terra_template")
   sol_current=$(sha256_file "$sol_template")
   [ -n "$terra_current" ] && [ -n "$sol_current" ] || fail "could not digest shipped upgrade templates"
@@ -317,14 +318,36 @@ if [ "$upgrade_known" -eq 1 ]; then
     [ "$cleanup_ok" -eq 1 ]
   }
 
+  defer_upgrade_signal() {
+    upgrade_deferred_signal=1
+  }
+
+  begin_signal_safe_transition() {
+    upgrade_deferred_signal=0
+    trap defer_upgrade_signal HUP INT TERM
+  }
+
+  end_signal_safe_transition() {
+    trap upgrade_on_signal HUP INT TERM
+    if [ "$upgrade_deferred_signal" -eq 1 ]; then
+      upgrade_on_signal
+    fi
+  }
+
   acquire_upgrade_lock() {
     owner_name=$(basename "$transaction_dir")
     lock_owner_dir=$upgrade_lock/$owner_name
-    if ! mkdir "$upgrade_lock" 2>/dev/null; then
+    lock_created=0
+    begin_signal_safe_transition
+    if mkdir "$upgrade_lock" 2>/dev/null; then
+      lock_acquired=1
+      lock_created=1
+    fi
+    end_signal_safe_transition
+    if [ "$lock_created" -ne 1 ]; then
       printf '%s\n' "ERROR: upgrade lock is already held or unsafe: $upgrade_lock" >&2
       return 1
     fi
-    lock_acquired=1
     if ! mkdir "$lock_owner_dir" 2>/dev/null || [ -L "$upgrade_lock" ] ||
        [ ! -d "$upgrade_lock" ] || [ -L "$lock_owner_dir" ] || [ ! -d "$lock_owner_dir" ]; then
       printf '%s\n' "ERROR: could not establish ownership-verifiable upgrade lock: $upgrade_lock" >&2
@@ -453,7 +476,9 @@ if [ "$upgrade_known" -eq 1 ]; then
     rollback_ok=1
     recovery_artifact=''
     secondary_recovery_artifact=''
-    if [ "$lock_acquired" -eq 1 ] && ! owns_upgrade_lock; then
+    if [ "$lock_acquired" -eq 1 ] && ! owns_upgrade_lock &&
+       { [ "$terra_displaced_owned" -ne 0 ] || [ "$sol_displaced_owned" -ne 0 ] ||
+         [ "$terra_published_owned" -ne 0 ] || [ "$sol_published_owned" -ne 0 ]; }; then
       printf '%s\n' "ERROR: refusing destination rollback after upgrade lock ownership changed: $upgrade_lock" >&2
       rollback_ok=0
     else
@@ -559,50 +584,76 @@ if [ "$upgrade_known" -eq 1 ]; then
       printf '%s\n' "ERROR: known $label destination changed before publication; no overwrite performed" >&2
       return 1
     fi
-    if ! mv "$destination" "$displaced"; then
-      printf '%s\n' "ERROR: could not atomically displace known $label destination; private recovery transaction: $transaction_dir" >&2
-      return 1
+    move_succeeded=0
+    displace_valid=0
+    unknown_restored=0
+    restore_cleanup_failed=0
+    begin_signal_safe_transition
+    if mv "$destination" "$displaced"; then
+      move_succeeded=1
     fi
-    if ! has_exact_digest "$displaced" "$old_digest" ||
-       ! has_exact_digest "$backup" "$old_digest" ||
-       ! cmp -s "$displaced" "$backup"; then
-      # Classification is deliberately repeated after the atomic displacement. The
-      # destination may have changed between the pre-publication check and mv; restore
-      # that unknown displaced file only when the destination is still absent, never by
-      # linking the accepted old backup over it.
+    if [ "$move_succeeded" -eq 1 ] &&
+       has_exact_digest "$displaced" "$old_digest" &&
+       has_exact_digest "$backup" "$old_digest" &&
+       cmp -s "$displaced" "$backup"; then
+      if [ "$label" = Terra ]; then
+        terra_displaced_owned=1
+      else
+        sol_displaced_owned=1
+      fi
+      displace_valid=1
+    elif [ "$move_succeeded" -eq 1 ]; then
+      # Provisional state 2 means this transaction moved a destination but did not prove
+      # it was the accepted old inode. Rollback must preserve the guarded backup and may
+      # not treat the moved bytes as transaction-owned.
       if [ "$label" = Terra ]; then
         terra_displaced_owned=2
       else
         sol_displaced_owned=2
       fi
-      if ! path_exists "$destination"; then
-        if ln "$displaced" "$destination" && cmp -s "$displaced" "$destination"; then
-          rm -f "$displaced" || {
-            printf '%s\n' "ERROR: $label displace revalidation failed; restored unknown destination but preserved private recovery transaction: $transaction_dir" >&2
-            return 1
-          }
-          printf '%s\n' "ERROR: $label displace revalidation failed; restored unknown destination without overwrite; private recovery transaction: $transaction_dir" >&2
-          return 1
-        fi
+      if ! path_exists "$destination" && ln "$displaced" "$destination" &&
+         same_file "$displaced" "$destination"; then
+        unknown_restored=1
+        rm -f "$displaced" || restore_cleanup_failed=1
+      fi
+    fi
+    end_signal_safe_transition
+    if [ "$move_succeeded" -ne 1 ]; then
+      printf '%s\n' "ERROR: could not atomically displace known $label destination; private recovery transaction: $transaction_dir" >&2
+      return 1
+    fi
+    if [ "$displace_valid" -ne 1 ]; then
+      # Classification is deliberately repeated after the atomic displacement. The
+      # destination may have changed between the pre-publication check and mv; restore
+      # that unknown displaced file only when the destination is still absent, never by
+      # linking the accepted old backup over it.
+      if [ "$unknown_restored" -eq 1 ] && [ "$restore_cleanup_failed" -eq 1 ]; then
+        printf '%s\n' "ERROR: $label displace revalidation failed; restored unknown destination but preserved private recovery transaction: $transaction_dir" >&2
+        return 1
+      fi
+      if [ "$unknown_restored" -eq 1 ]; then
+        printf '%s\n' "ERROR: $label displace revalidation failed; restored unknown destination without overwrite; private recovery transaction: $transaction_dir" >&2
+        return 1
       fi
       printf '%s\n' "ERROR: $label displace revalidation failed; concurrent destination present; preserved private recovery transaction: $transaction_dir" >&2
       return 1
     fi
-    if [ "$label" = Terra ]; then
-      terra_displaced_owned=1
-    else
-      sol_displaced_owned=1
+    publish_succeeded=0
+    begin_signal_safe_transition
+    if ln "$stage" "$destination"; then
+      if [ "$label" = Terra ]; then
+        terra_published_owned=1
+      else
+        sol_published_owned=1
+      fi
+      publish_succeeded=1
     fi
-    if ! ln "$stage" "$destination" ||
+    end_signal_safe_transition
+    if [ "$publish_succeeded" -ne 1 ] ||
        [ "$(classify "$destination" "$template" "$old_digest")" != current ] ||
        ! same_file "$destination" "$stage"; then
       printf '%s\n' "ERROR: concurrent $label destination appeared; no overwrite performed; private recovery transaction: $transaction_dir" >&2
       return 1
-    fi
-    if [ "$label" = Terra ]; then
-      terra_published_owned=1
-    else
-      sol_published_owned=1
     fi
     return 0
   }
