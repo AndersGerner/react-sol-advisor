@@ -4,8 +4,8 @@ Sol Development Advisor uses this canonical contract for the Luna app-task lane.
 
 ## 1. Scope
 
-This contract governs user-visible GPT-5.6 Luna / Max Codex tasks. It is separate from
-native subagents and never uses a Luna custom-agent TOML.
+This contract governs user-visible GPT-5.6 Luna / Max / Fast Codex tasks. It is separate
+from native subagents and never uses a Luna custom-agent TOML.
 
 The parent Sol task remains responsible for task creation, capability selection,
 monitoring, correction decisions, repository verification, PR authorization, dependency
@@ -15,7 +15,37 @@ inputs to that judgment, never acceptance by themselves.
 ## 2. Capability-adaptive monitoring
 
 Before choosing the Luna lane, inspect the app-task operations and their actual exposed
-schemas. Require accepted routing for `gpt-5.6-luna` with `thinking = max`.
+schemas. Require accepted routing for `gpt-5.6-luna` with `thinking = max` and the Fast
+service tier.
+
+### Fast-mode gate for initial creation and every correction
+
+Fast mode is a service tier distinct from the Luna model and Max reasoning:
+
+1. Inspect the current model catalog and require GPT-5.6 Luna to advertise a Fast service
+   tier. Resolve and record its returned Fast tier ID. The current catalog may expose the
+   user-facing alias `fast` while using a request ID such as `priority`; use the actual
+   advertised ID, never a guessed value.
+2. Inspect the actual `create_thread` and `send_message_to_thread` schemas before the
+   initial creation. Both must expose a documented `serviceTier` setter, or an explicitly
+   equivalent field, and the task read/response surface must expose the effective tier.
+3. For the initial creation, explicitly send `model = gpt-5.6-luna`, `thinking = max`,
+   and `serviceTier = <advertised Fast tier ID>`. Confirm returned or exact-thread
+   metadata reports the same Fast tier before accepting the route.
+4. For every correction, explicitly send the same three routing values and confirm the
+   effective Fast tier again. A creation-time setting is not proof for a later turn.
+5. If the catalog, setter, or confirmation is missing, contradictory, rejected, or
+   unobservable, stop before the affected call and return:
+
+   ```text
+   LUNA FAST MODE: blocked
+   MISSING CAPABILITY: explicit and observable Fast service tier for Luna app tasks
+   ```
+
+Do not infer Fast mode from the Luna model name, a global or project config default, a
+previous turn, or child prompt text. A prompt that says “use Fast mode” is not routing
+evidence. Never invent an unsupported field, silently use the default tier, or substitute
+another model, lane, repository, or task.
 
 ### Preferred monitoring mode
 
@@ -47,7 +77,7 @@ send_message_to_thread
 Use this sequence:
 
 1. Call `list_projects` and resolve the exact current project.
-2. Call `create_thread` with Luna / Max.
+2. Call `create_thread` with Luna / Max / Fast after the Fast-mode gate passes.
 3. Resolve the real `threadId` and `hostId` from creation when they are returned.
 4. When creation returns only a setup/client handle, use `list_threads` for bounded
    identity discovery only.
@@ -139,7 +169,7 @@ DELIVERY PROFILES
 
 CONSTRAINTS
 Settled decisions, interfaces/invariants, domain failure modes, safety boundaries,
-excluded scope, concurrency warning, and the required Luna / Max route.
+excluded scope, concurrency warning, and the required Luna / Max / Fast route.
 
 STARTING STATE / BASE
 Exact project ID, returned projectKind and supportsWorktrees, requested environment,
@@ -185,6 +215,8 @@ HOST ID: returned or uniquely resolved hostId
 CHILD WORKTREE: unresolved until the first exact read returns it; then independently verified exact path and branch metadata
 MONITORING MODE: preferred wait/read | exact-thread read_thread fallback
 ROUTING EVIDENCE: accepted creation or correction routing metadata when returned
+FAST TIER ID: exact catalog-advertised tier ID used for creation and every correction
+FAST MODE EVIDENCE: returned or exact-thread effective serviceTier for the latest turn
 PREVIOUS COMPLETED TURN ID: none before the initial turn; exact prior ID before correction
 LATEST COMPLETED TURN ID: exact newly completed turn after acceptance gates pass
 COMMIT / PR STATE: independently inspected state
@@ -301,9 +333,11 @@ When the parent finds a defect:
 1. Record the previous completed turn ID and invalidate its handoff.
 2. Send exact findings, required changes, and rerun commands through
    `send_message_to_thread` using the same real `threadId` and same `hostId`. Every
-   correction call must explicitly pass `model = gpt-5.6-luna` and `thinking = max`.
-3. Record any returned routing metadata. If returned routing metadata contradicts Luna /
-   Max, stop rather than accepting the correction under another route.
+   correction call must explicitly pass `model = gpt-5.6-luna`, `thinking = max`, and
+   `serviceTier = <advertised Fast tier ID>`.
+3. Confirm the returned or exact-thread effective tier and record all returned routing
+   metadata. Missing or contradictory Luna / Max / Fast evidence stops with
+   `LUNA FAST MODE: blocked` rather than accepting the correction under another route.
 4. Require the same child worktree; a correction must not silently move to a replacement
    worktree or repository.
 5. Use the same selected monitoring mode on that exact identity.
@@ -322,7 +356,8 @@ disagreement. A new task is for a genuinely independent stack.
 
 The parent may accept only after it has:
 
-- Confirmed accepted Luna / Max routing for creation and every correction call, plus the selected monitoring capability.
+- Confirmed accepted Luna / Max / Fast routing for initial creation and every correction
+  call, plus the selected monitoring capability.
 - Recorded exact real thread, host, latest completed turn, and child-worktree identity.
 - Read the readable final assistant handoff for the latest completed turn.
 - Inspected the actual child worktree, branch/base, status, changed files, complete diff,

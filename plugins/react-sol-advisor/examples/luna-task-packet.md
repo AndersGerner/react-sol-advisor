@@ -72,7 +72,7 @@ DELIVERY PROFILES
 CONSTRAINTS
 - No shared contract or API changes.
 - No unrelated refactor or formatting.
-- This task must use GPT-5.6 Luna with Max reasoning.
+- This task must use GPT-5.6 Luna with Max reasoning and Fast service tier.
 - Stop if the canonical filter uses a different ownership model than described.
 - Domain failure modes: invalid URL values normalize safely; request cancellation and
   stale results cannot overwrite current URL state; no rollback is needed because this
@@ -122,6 +122,15 @@ GAPS: none or exact blockers
 No unresolved placeholder may remain in the pre-creation fields when the actual
 `create_thread` call is made.
 
+The parent separately calls `create_thread` only after resolving the catalog-advertised
+Fast tier ID and confirming the call and read schemas can set and observe it:
+
+```text
+model: "gpt-5.6-luna"
+thinking: "max"
+serviceTier: "<advertised Fast tier ID>"
+```
+
 ## Parent-owned lifecycle record
 
 This record is created after `create_thread` and is not sent in the initial child prompt.
@@ -139,6 +148,8 @@ HOST ID: actual hostId returned or uniquely resolved after creation
 CHILD WORKTREE: unresolved until the first exact read returns it; then independently verified path and branch metadata
 MONITORING MODE: preferred wait/read | exact-thread read_thread fallback
 ROUTING EVIDENCE: accepted creation routing metadata when returned
+FAST TIER ID: exact catalog-advertised tier ID used for creation and corrections
+FAST MODE EVIDENCE: observable effective serviceTier for the latest turn
 PREVIOUS COMPLETED TURN ID: none before the initial turn; exact prior ID before correction
 LATEST COMPLETED TURN ID: exact newly completed turn accepted by the parent
 COMMIT / PR STATE: independently inspected state
@@ -158,6 +169,7 @@ threadId: <same real threadId from the parent lifecycle record>
 hostId: <same hostId from the parent lifecycle record>
 model: "gpt-5.6-luna"
 thinking: "max"
+serviceTier: "<same advertised Fast tier ID>"
 
 MESSAGE
 Correct the following verified defects in the same child worktree:
@@ -173,6 +185,7 @@ Return an updated handoff for a new completed turn. Do not push or create/update
 unless this correction message separately authorizes it.
 ```
 
-After every correction call, the parent records any returned routing metadata and stops
-if it contradicts Luna / Max. The parent then requires a different newly completed turn
+After every correction call, the parent confirms the effective Fast tier, records all
+returned routing metadata, and stops with `LUNA FAST MODE: blocked` if it is missing or
+contradicts Luna / Max / Fast. The parent then requires a different newly completed turn
 ID, reads the updated handoff, and independently reinspects the same worktree and diff.

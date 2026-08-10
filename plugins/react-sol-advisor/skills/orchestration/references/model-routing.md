@@ -96,7 +96,7 @@ Any of these makes work red:
 
 | Risk | Default route |
 | --- | --- |
-| Green | Luna / Max app task; parent Sol verifies and accepts |
+| Green | Luna / Max / Fast app task; parent Sol verifies and accepts |
 | Amber | Sol decomposes into green Luna units where possible; Terra handles only the irreducible amber core |
 | Red | Sol settles architecture; Terra / High implements; fresh Sol reviewer required |
 
@@ -107,7 +107,7 @@ when clean non-overlapping ownership exists.
 
 | Risk | Default route |
 | --- | --- |
-| Green | Luna / Max app task |
+| Green | Luna / Max / Fast app task |
 | Amber | Terra / High by default, or `decomposed-mixed` when extracted subparts independently satisfy every green criterion |
 | Red | Terra / High plus fresh Sol reviewer |
 
@@ -163,8 +163,8 @@ A Luna worker must stop and return `blocked` or `partial` rather than improvisin
   diagnostic attempts.
 - The requested behavior creates an unaddressed race, security, migration, or
   compatibility risk.
-- Required task tools, repository access, model, or reasoning effort cannot be
-  observed.
+- Required task tools, repository access, model, reasoning effort, or Fast service tier
+  cannot be set and observed.
 - Another concurrent change overlaps owned files or invalidates the selected base.
 
 The parent then revises the packet, decomposes further, or routes the unresolved core to

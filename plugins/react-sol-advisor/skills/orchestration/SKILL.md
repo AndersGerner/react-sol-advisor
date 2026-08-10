@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: "Sol Development Advisor Luna-first orchestration: green economy work routes to GPT-5.6 Luna / Max app tasks; amber/red or balanced/critical work escalates to Terra / High; fresh Sol review at commitment boundaries; no silent lane fallback."
+description: "Sol Development Advisor Luna-first orchestration: green economy work routes to GPT-5.6 Luna / Max / Fast app tasks; amber/red or balanced/critical work escalates to Terra / High; fresh Sol review at commitment boundaries; no silent lane fallback."
 ---
 
 # Sol Development Advisor Orchestration
@@ -80,10 +80,10 @@ Do not apply generic framework advice without checking installed versions.
 Use the green/amber/red criteria and common examples in
 [references/model-routing.md](references/model-routing.md). Then select the policy:
 
-- **economy** (default): green -> Luna / Max; amber -> Sol decomposition with Luna
+- **economy** (default): green -> Luna / Max / Fast; amber -> Sol decomposition with Luna
   subparts and Terra for the irreducible core; red -> Sol architecture then Terra /
   High plus fresh Sol review.
-- **balanced**: green -> Luna / Max; amber -> Terra / High or `decomposed-mixed` only
+- **balanced**: green -> Luna / Max / Fast; amber -> Terra / High or `decomposed-mixed` only
   when each extracted Luna subpart independently satisfies every green criterion; red
   -> Terra / High plus fresh Sol review.
 - **critical**: green -> Terra / High unless the parent explicitly identifies a purely
@@ -210,17 +210,27 @@ creation, the parent creates a separate lifecycle record for those returned or
 independently resolved values. Existing identity belongs in a correction message, not
 the initial packet.
 
-Set `model` to `gpt-5.6-luna` and `thinking` to `max` in `create_thread`. Treat accepted
-creation routing plus the returned real identity as routing evidence; report returned
-model/thinking metadata only when the app tool provides it.
+Fast mode is a separate service tier, not a property implied by the Luna model name.
+Before initial creation, inspect the model catalog, resolve the advertised Fast tier ID,
+and require the actual `create_thread` and `send_message_to_thread` schemas to expose a
+documented `serviceTier` setter plus observable effective-tier metadata. Set `model` to
+`gpt-5.6-luna`, `thinking` to `max`, and `serviceTier` to the advertised Fast tier ID in
+the initial creation and every correction. Confirm returned or exact-thread metadata
+still reports that tier. Do not infer Fast mode from the Luna model name, a config
+default, or prompt text. If any setter or confirmation is unavailable, stop before the
+affected call and return `LUNA FAST MODE: blocked`; do not invent a field or continue on
+an unverified tier.
+
+Treat accepted Luna / Max / Fast creation routing plus the returned real identity as
+routing evidence. Report exactly which values the app tool returned or made observable.
 
 Monitoring is capability-adaptive. `wait_threads` is preferred, not mandatory. When it
 is exposed with a usable schema, use `wait_threads` then `read_thread`. When
 `wait_threads` is absent, use the exact-thread `read_thread` polling fallback only if
 `list_projects`, `list_threads`, `create_thread`, `read_thread`, and
 `send_message_to_thread` are all exposed with usable schemas. If the selected mode's
-required capabilities, Luna, or Max are unavailable, stop without a model, agent,
-repository, or native-lane fallback.
+required capabilities, Luna, Max, or Fast service tier are unavailable, stop without a
+model, agent, repository, or native-lane fallback.
 
 When creation returns only a setup/client handle, use `list_threads` for bounded real
 identity discovery only. Never pass the setup handle as a real identity. After resolving
@@ -243,8 +253,10 @@ a newly completed latest turn and readable handoff is non-success.
 
 Corrections use `send_message_to_thread` with the same real `threadId`, same `hostId`,
 and same child worktree. Every correction call must explicitly pass
-`model = gpt-5.6-luna` and `thinking = max`, and the parent records any returned routing
-metadata. Returned routing metadata that contradicts Luna / Max stops the lane. Record
+`model = gpt-5.6-luna`, `thinking = max`, and `serviceTier = <advertised Fast tier ID>`,
+and the parent records the observable effective tier and any returned routing metadata.
+Missing or contradictory Luna / Max / Fast metadata stops the lane with
+`LUNA FAST MODE: blocked`. Record
 the previous completed turn ID, require a different newly completed turn ID, read its
 updated handoff, and repeat primary diff inspection and verification. Any correction
 invalidates the earlier handoff. The primary owns

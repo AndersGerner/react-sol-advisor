@@ -251,7 +251,7 @@ profiles = read(profiles_path)
 workflow = read(workflow_path)
 
 # 1-3. Product identity generalizes while the public technical namespace remains stable.
-require(manifest.get("version") == "0.2.0", "plugin manifest version is 0.2.0")
+require(manifest.get("version") == "0.2.1", "plugin manifest version is 0.2.1")
 require(
     manifest.get("interface", {}).get("displayName") == "Sol Development Advisor",
     "plugin display name is Sol Development Advisor",
@@ -556,9 +556,9 @@ require(
 require(
     includes_all(
         routing,
-        "| Green | Luna / Max app task; parent Sol verifies and accepts |",
+        "| Green | Luna / Max / Fast app task; parent Sol verifies and accepts |",
         "| Amber | Sol decomposes into green Luna units", "| Red | Sol settles architecture; Terra / High implements; fresh Sol reviewer required |",
-        "### Balanced", "| Green | Luna / Max app task |", "| Amber | Terra / High by default, or `decomposed-mixed` when extracted subparts independently satisfy every green criterion |",
+        "### Balanced", "| Green | Luna / Max / Fast app task |", "| Amber | Terra / High by default, or `decomposed-mixed` when extracted subparts independently satisfy every green criterion |",
         "| Red | Terra / High plus fresh Sol reviewer |", "### Critical",
         "| Green | Terra / High plus fresh Sol reviewer required", "purely mechanical Luna subtask; fresh Sol review still required",
         "| Amber | Terra / High plus fresh Sol reviewer required |",
@@ -616,7 +616,10 @@ require(
 )
 for relative, source in route_sources.items():
     require("Sol Development Advisor" in source, f"{relative} agrees on the Sol Development Advisor product name")
-require("## 0.2.0" in changelog and "Sol Development Advisor" in changelog, "changelog records the generalized 0.2.0 contract")
+require(
+    "## 0.2.1" in changelog and "## 0.2.0" in changelog and "Sol Development Advisor" in changelog,
+    "changelog records the current 0.2.1 release and generalized 0.2.0 contract",
+)
 
 for relative, source in {
     skill_path: skill,

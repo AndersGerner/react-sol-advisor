@@ -28,6 +28,16 @@ All notable changes to Sol Development Advisor will be documented in this file.
   idempotence.
 - Focused generalization and known-native-role-upgrade acceptance verifiers.
 
+## 0.2.1 - 2026-08-10
+
+### Changed
+
+- Made every Luna turn Fast-only: initial creation and each same-thread correction must
+  explicitly set and confirm the model catalog's advertised Fast service tier.
+- Added fail-closed `LUNA FAST MODE: blocked` behavior when the app-task surface cannot
+  set or observe Fast mode; model names, prompts, config defaults, and earlier turns are
+  not accepted as tier evidence.
+
 ## 0.1.1 - 2026-08-08
 
 ### Changed

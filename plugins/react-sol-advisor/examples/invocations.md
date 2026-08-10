@@ -4,7 +4,7 @@
 
 ```text
 @react-sol-advisor Implement Linear issue FLE-123 using economy mode.
-Use Luna for every bounded task that fits the routing policy. Select mandatory
+Use Luna / Max / Fast for every bounded task that fits the routing policy. Select mandatory
 production-delivery plus only the conditional profiles required by owned paths.
 Create a draft PR only after parent acceptance, then archive accepted child tasks when
 a supported archive operation is available. Otherwise return the thread IDs that are
@@ -24,7 +24,7 @@ Use economy mode. Do not create a PR; leave an accepted commit and verification 
 ```text
 @react-sol-advisor Implement FLE-456 using balanced mode.
 Use Terra for any unresolved Next.js caching, race-condition, or cross-package contract
-work. Use Luna only for extracted UI, test, or mechanical call-site workstreams that
+work. Use Luna / Max / Fast only for extracted UI, test, or mechanical call-site workstreams that
 independently satisfy every green criterion; boundedness alone is insufficient. Keep
 bounded queue leases, reconciliation transitions, and unsettled races Terra-owned.
 Create a draft PR after acceptance.
@@ -52,7 +52,8 @@ economy policy.
 
 ```text
 @react-sol-advisor Implement this bounded issue in economy mode.
-If Luna / Max app-task routing is unavailable, stop and report the missing capability.
+If Luna / Max / Fast app-task routing is unavailable, stop and report the missing
+capability.
 Do not fall back to Terra unless I explicitly authorize it.
 ```
 
@@ -120,8 +121,9 @@ After identity resolution, monitor only the same real threadId and hostId. Accep
 latest completed turn with a readable final assistant handoff plus independent child
 worktree/diff verification. If a correction is needed, make the correction call with the
 same real threadId, same hostId, and same child worktree, explicitly pass
-model = gpt-5.6-luna and thinking = max, record any returned routing metadata, and
+model = gpt-5.6-luna, thinking = max, and serviceTier = the catalog-advertised Fast
+tier ID. Confirm the effective Fast tier, record any returned routing metadata, and
 require a new completed turn ID with an updated handoff. Fail closed on timeout,
-notLoaded, idle without a new completed turn, unsafe project environment, or missing
-exact project registration.
+notLoaded, idle without a new completed turn, unsafe project environment, missing exact
+project registration, or unobservable Fast mode.
 ```

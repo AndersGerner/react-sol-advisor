@@ -1,5 +1,5 @@
 #!/bin/sh
-# Semantic contract checks for capability-adaptive Luna task monitoring.
+# Semantic contract checks for Fast-only Luna routing and capability-adaptive monitoring.
 
 set -eu
 
@@ -91,6 +91,50 @@ contracts = read(contracts_path)
 invocations = read(invocations_path)
 packet = read(packet_path)
 profiles = read(profiles_path)
+
+# 0. Fast is a distinct service tier. Luna creation and every correction must set and
+# confirm the catalog-advertised Fast tier; model-name or prompt inference is forbidden.
+fast_contract_terms = (
+    "Fast service tier",
+    "serviceTier",
+    "initial creation",
+    "every correction",
+    "LUNA FAST MODE: blocked",
+)
+for relative, value in ((lane_path, lane), (skill_path, skill), (roles_path, roles)):
+    require(
+        f"{relative} enforces Fast service tier for every Luna turn",
+        has_all(value, *fast_contract_terms),
+    )
+require(
+    "Luna lane forbids inferring Fast mode from model or prompt",
+    has_all(
+        lane,
+        "Do not infer Fast mode from the Luna model name",
+        "prompt",
+        "not routing evidence",
+        "fail closed",
+    ),
+)
+require(
+    "Luna lane resolves and confirms the catalog-advertised Fast tier",
+    has_all(
+        lane,
+        "model catalog",
+        "Fast tier ID",
+        "create_thread",
+        "send_message_to_thread",
+        "returned",
+        "confirm",
+    ),
+)
+require(
+    "user-facing metadata and examples state Luna Max Fast routing",
+    has_all(readme, "Luna / Max / Fast")
+    and has_all(packet, "GPT-5.6 Luna with Max reasoning and Fast service tier")
+    and has_all(invocations, "Luna / Max / Fast")
+    and "Luna / Max / Fast" in manifest["interface"]["longDescription"],
+)
 
 # 1. wait_threads is preferred when usable, not a hard dependency.
 require(
@@ -517,14 +561,14 @@ require(
 )
 
 # Release and CI integration.
-require("plugin manifest version is 0.2.0", manifest.get("version") == "0.2.0")
+require("plugin manifest version is 0.2.1", manifest.get("version") == "0.2.1")
 require(
-    "repository verifier asserts version 0.2.0",
-    has_all(verify, "manifest version is not 0.2.0", "= '0.2.0'"),
+    "repository verifier asserts version 0.2.1",
+    has_all(verify, "manifest version is not 0.2.1", "= '0.2.1'"),
 )
 require(
-    "general contract verifier asserts version 0.2.0 while retaining the 0.1.1 record and focused gate",
-    has_all(contracts, "0.2.0", "0.1.1", "verify-luna-thread-contracts.sh"),
+    "general contract verifier asserts version 0.2.1 while retaining the 0.2.0 and 0.1.1 records and focused gate",
+    has_all(contracts, "0.2.1", "0.2.0", "0.1.1", "verify-luna-thread-contracts.sh"),
 )
 require(
     "changelog records the 0.1.1 exact-thread compatibility release",

@@ -38,6 +38,7 @@ Copyright 2026 Daniel McAteer.
   critical policies unchanged.
 - Mandatory generic production delivery plus conditional React/UI, TypeScript backend,
   Postgres/data, and worker/integration specialist profiles.
+- Fast-only Luna turns with explicit service-tier evidence and fail-closed behavior.
 - Optional Linear intake and capability-gated archiving.
 - Safe exact-known-version native-role upgrade and updated marketplace manifest, plugin
   manifest, README, examples, and verifier coverage.

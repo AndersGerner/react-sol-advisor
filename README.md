@@ -4,7 +4,7 @@ Sol Development Advisor is a production delivery advisor for Codex. Every
 implementation task carries the domain-neutral `production-delivery` core; React/UI,
 TypeScript backend, Postgres/data, and worker/integration profiles are selected only
 when their owned paths and observable acceptance require them. It routes eligible green
-work through user-visible GPT-5.6 Luna / Max app tasks, escalates amber and red work to
+work through user-visible GPT-5.6 Luna / Max / Fast app tasks, escalates amber and red work to
 a native GPT-5.6 Terra / High role, and requires a fresh Sol / High review at the
 defined commitment boundaries.
 
@@ -18,10 +18,10 @@ baseline SHA, and licensing are recorded in [UPSTREAM.md](UPSTREAM.md).
 
 ## What it does
 
-- **Economy** (default): bounded green work -> Luna / Max; amber work -> Sol
+- **Economy** (default): bounded green work -> Luna / Max / Fast; amber work -> Sol
   decomposition with Luna subparts and Terra core; red work -> Terra / High plus fresh
   Sol review.
-- **Balanced**: green -> Luna / Max; amber -> Terra / High or `decomposed-mixed` only
+- **Balanced**: green -> Luna / Max / Fast; amber -> Terra / High or `decomposed-mixed` only
   when every extracted Luna workstream independently passes all green criteria; red ->
   Terra / High plus fresh Sol review.
 - **Critical**: green -> Terra / High unless a purely mechanical Luna subtask
@@ -180,6 +180,14 @@ not require the React profile for the backend-owned files.
 
 ## Luna task monitoring
 
+Every Luna turn is Fast-only. Before initial creation, the plugin resolves the model
+catalog's advertised Fast tier ID and requires the task API to expose a real
+`serviceTier` setter plus observable effective-tier metadata for both `create_thread`
+and `send_message_to_thread`. It explicitly reasserts Luna / Max / Fast on every
+correction. The Luna model name and prompt text are not Fast-mode evidence. If Fast
+cannot be set and confirmed, the lane stops with `LUNA FAST MODE: blocked` before the
+affected call; it does not run on the default tier.
+
 Luna monitoring is capability-adaptive. When `wait_threads` is exposed with a usable
 schema, the preferred path is `wait_threads -> read_thread -> independent child
 worktree/diff verification`. `wait_threads` is preferred, not mandatory.
@@ -215,8 +223,9 @@ completed turn and `notLoaded` are not completion evidence. Polling is bounded a
 closed; there is no background callback.
 
 Corrections reuse the same real thread, host, and child worktree, explicitly pass
-`model = gpt-5.6-luna` and `thinking = max` on every correction call, record any returned
-routing metadata, and must produce a new completed turn ID plus an updated handoff. If
+`model = gpt-5.6-luna`, `thinking = max`, and the catalog-advertised Fast `serviceTier`
+on every correction call, confirm the effective tier, record returned routing metadata,
+and produce a new completed turn ID plus an updated handoff. If
 `list_projects` does not return the exact intended path, add or open the folder as a
 project in the Codex app and start a fresh task in that project. The plugin does not
 invent project IDs, use Computer Use for registration, or substitute another repository.
@@ -263,7 +272,7 @@ The suite checks:
 - Routing, production-delivery, and conditional specialist-profile contracts
 - Safe known-version native-role upgrade, rollback, idempotence, and upstream/Luna
   non-interference
-- Capability-adaptive Luna monitoring, exact-turn completion, correction identity,
+- Fast-only Luna routing, capability-adaptive monitoring, exact-turn completion, correction identity,
   project registration, PR, and explicit archive evidence
 - Optional Linear intake
 - Stale identifiers and relative Markdown links
@@ -274,6 +283,9 @@ The suite checks:
   when all five baseline app-task operations are exposed.
 - **Missing fallback capability**: the plugin stops the Luna lane and reports the exact
   missing operation. Provide explicit authorization before switching to Terra.
+- **Fast mode unavailable or unobservable**: the plugin returns
+  `LUNA FAST MODE: blocked` before the affected Luna call. It does not infer Fast from
+  the model name, prompt, config default, or earlier turn.
 - **Project path missing from `list_projects`**: add or open the folder as a project in
   the Codex app and start a fresh task in that project.
 - **Unsafe project environment**: inspect the returned `projectKind`,

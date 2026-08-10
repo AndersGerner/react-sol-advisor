@@ -1,6 +1,6 @@
 {
   "name": "react-sol-advisor",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Production delivery advisor for Codex with conditional React, TypeScript, Postgres, and worker specialist profiles.",
   "author": {"name": "Anders Gerner", "url": "https://github.com/AndersGerner"},
   "homepage": "https://github.com/AndersGerner/react-sol-advisor#readme",
@@ -10,12 +10,12 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Sol Development Advisor",
-    "shortDescription": "Apply production delivery with conditional domain profiles, escalate safely, and verify before acceptance.",
-    "longDescription": "Sol Development Advisor is a production delivery advisor for Codex. GPT-5.6 Sol stays in the primary session for architecture, decomposition, verification, and acceptance. Every implementation stream carries production-delivery, with React, TypeScript backend, Postgres/data, and worker/integration profiles selected only when owned paths and acceptance require them. The default economy policy routes bounded green work through user-visible GPT-5.6 Luna / Max app tasks with capability-adaptive monitoring: wait_threads is preferred, while bounded exact-thread read_thread polling is supported when the proven baseline operations are exposed. Balanced policy escalates amber and red work to a separately installed GPT-5.6 Terra / High native role when appropriate, while critical policy always requires a fresh Sol review after parent verification. Optional Linear intake is read-only and never a hard dependency.",
+    "shortDescription": "Apply Fast-only Luna production delivery with conditional domain profiles, escalate safely, and verify before acceptance.",
+    "longDescription": "Sol Development Advisor is a production delivery advisor for Codex. GPT-5.6 Sol stays in the primary session for architecture, decomposition, verification, and acceptance. Every implementation stream carries production-delivery, with React, TypeScript backend, Postgres/data, and worker/integration profiles selected only when owned paths and acceptance require them. The default economy policy routes bounded green work through user-visible GPT-5.6 Luna / Max / Fast app tasks, failing closed when the Fast service tier cannot be explicitly set and observed. Monitoring is capability-adaptive: wait_threads is preferred, while bounded exact-thread read_thread polling is supported when the proven baseline operations are exposed. Balanced policy escalates amber and red work to a separately installed GPT-5.6 Terra / High native role when appropriate, while critical policy always requires a fresh Sol review after parent verification. Optional Linear intake is read-only and never a hard dependency.",
     "developerName": "Anders Gerner",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://github.com/AndersGerner/react-sol-advisor",
-    "defaultPrompt": ["For bounded economy implementation work, apply production-delivery and route to Luna / Max when eligible.", "For critical implementation work, keep architecture in Sol, route implementation through Terra / High, then require a fresh Sol review."]
+    "defaultPrompt": ["For bounded economy implementation work, apply production-delivery and route to Luna / Max / Fast when eligible; fail closed if Fast cannot be set and observed.", "For critical implementation work, keep architecture in Sol, route implementation through Terra / High, then require a fresh Sol review."]
   }
 }

@@ -122,8 +122,16 @@ The primary session must inspect the diff and rerun verification itself.
 
 Green economy work uses the Luna task lane by default. It is outside native subagent V2
 and never uses `spawn_agent` or a Luna companion TOML. The child route requires
-`gpt-5.6-luna` with `thinking = max` and a complete packet from
+`gpt-5.6-luna` with `thinking = max`, the Fast service tier, and a complete packet from
 [luna-task-lane.md](luna-task-lane.md).
+
+Before initial creation, resolve the model catalog's advertised Fast tier ID. The actual
+`create_thread` and `send_message_to_thread` schemas must expose a documented
+`serviceTier` setter and observable effective-tier evidence. Explicitly set that tier on
+the initial creation and every correction, then confirm it from returned or exact-thread
+metadata. Do not infer Fast mode from the Luna model name or prompt text. If the setter
+or confirmation is missing, stop before the affected call with
+`LUNA FAST MODE: blocked`; never invent a parameter or accept the default tier.
 
 Call `list_projects` first. The exact current project for the intended path must be
 returned. If it is absent, stop and instruct the user to add or open the folder as a
@@ -150,8 +158,8 @@ usable `wait_threads` schema, wait on the exact real identity and then call
 `read_thread`. When `wait_threads` is absent, exact-thread `read_thread` polling is a
 supported fallback only if `list_projects`, `list_threads`, `create_thread`,
 `read_thread`, and `send_message_to_thread` are all exposed with usable schemas. Missing
-Luna, Max, or a capability required by the selected mode stops the lane without silent
-fallback.
+Luna, Max, Fast service tier, or a capability required by the selected mode stops the
+lane without silent fallback.
 
 A ready creation may return the exact real `threadId` and `hostId` immediately. A
 setup/client handle is not a real identity. Use `list_threads` only for bounded real
@@ -176,8 +184,10 @@ tool error, or polling timeout is non-success.
 
 Corrections use `send_message_to_thread` with the same real `threadId`, same `hostId`,
 and same child worktree. Every correction call explicitly passes
-`model = gpt-5.6-luna` and `thinking = max`; record any returned routing metadata and
-stop if it contradicts Luna / Max. Record the previous completed turn ID, require a
+`model = gpt-5.6-luna`, `thinking = max`, and
+`serviceTier = <advertised Fast tier ID>`; record the observable effective tier and any
+returned routing metadata, then stop with `LUNA FAST MODE: blocked` if Luna / Max / Fast
+is missing or contradicted. Record the previous completed turn ID, require a
 different newly completed turn ID, read the updated handoff, and repeat parent inspection
 and verification. The correction invalidates the earlier handoff.
 

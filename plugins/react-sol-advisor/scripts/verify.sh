@@ -28,7 +28,7 @@ for required in "$installer" "$runtime_inspector" "$test_support" "$luna_thread_
 done
 
 jq empty "$manifest"
-[ "$(jq -r '.version' "$manifest")" = '0.2.0' ] || fail "manifest version is not 0.2.0"
+[ "$(jq -r '.version' "$manifest")" = '0.2.1' ] || fail "manifest version is not 0.2.1"
 [ "$(jq -r '.name' "$manifest")" = 'react-sol-advisor' ] || fail "manifest name is not react-sol-advisor"
 [ "$(jq -r '.interface.displayName' "$manifest")" = 'Sol Development Advisor' ] || fail "manifest displayName is not Sol Development Advisor"
 pass "manifest JSON and identity"
