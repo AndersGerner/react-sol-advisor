@@ -100,6 +100,13 @@ prepare_stale_pair() {
   cp "$sol_fixture" "$target/$sol_file" || return 1
 }
 
+prepare_current_pair() {
+  target=$1
+  mkdir -p "$target" || return 1
+  cp "$terra_current" "$target/$terra_file" || return 1
+  cp "$sol_current" "$target/$sol_file" || return 1
+}
+
 add_upstream_sentinels() {
   target=$1
   printf '%s\n' "upstream-terra-sentinel" > "$target/sol-advisor-terra-implementer.toml" || return 1
@@ -551,6 +558,69 @@ elif ! cmp -s "$terra_fixture" "$current_lock_target/$terra_file" ||
 else
   pass "current/current authorization is serialized by the target lock and interrupted owner rolls back old/old"
   assert_no_upgrade_artifacts "current/current held-lock interruption" "$current_lock_target"
+fi
+
+# A current/current no-op must be equally signal-safe while its private stages and
+# target lock are being removed. Pause the first cleanup removal, interrupt its parent,
+# then release the wrapper so POSIX signal handling can complete.
+current_cleanup_target=$tmp_dir/current-current-cleanup-signal
+prepare_current_pair "$current_cleanup_target" || record_failure "could not prepare current/current cleanup fixture"
+add_upstream_sentinels "$current_cleanup_target" || record_failure "could not prepare current/current cleanup sentinels"
+printf '%s\n' "user-owned cleanup sentinel" > "$current_cleanup_target/user-owned-sentinel" ||
+  record_failure "could not prepare current/current cleanup user sentinel"
+current_cleanup_before=$(target_signature "$current_cleanup_target")
+current_cleanup_upstream_before=$(role_and_upstream_signature "$current_cleanup_target" | sed -n '3,4p')
+current_cleanup_control=$tmp_dir/current-current-cleanup-control
+current_cleanup_bin=$tmp_dir/current-current-cleanup-bin
+mkdir "$current_cleanup_control" "$current_cleanup_bin" || record_failure "could not prepare current/current cleanup controls"
+real_rm_for_current_cleanup=$(command -v rm) || record_failure "could not resolve system rm for current/current cleanup"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'for argument in "$@"; do' \
+  '  case "$argument" in' \
+  '    */terra.stage)' \
+  '      if [ ! -e "$RSA_TEST_CONTROL/a-at-current-cleanup" ]; then' \
+  '        : > "$RSA_TEST_CONTROL/a-at-current-cleanup"' \
+  '        while [ ! -e "$RSA_TEST_CONTROL/release-a-current-cleanup" ]; do sleep 0.05; done' \
+  '      fi' \
+  '      ;;' \
+  '  esac' \
+  'done' \
+  'exec "$RSA_TEST_REAL_RM" "$@"' > "$current_cleanup_bin/rm" ||
+  record_failure "could not create current/current cleanup rm wrapper"
+chmod 755 "$current_cleanup_bin/rm" || record_failure "could not make current/current cleanup rm wrapper executable"
+current_cleanup_output=$current_cleanup_control/a.out
+RSA_TEST_CONTROL="$current_cleanup_control" RSA_TEST_REAL_RM="$real_rm_for_current_cleanup" PATH="$current_cleanup_bin:$PATH" \
+sh "$installer" --target-dir "$current_cleanup_target" --upgrade-known >"$current_cleanup_output" 2>&1 &
+current_cleanup_pid=$!
+wait_for_path "$current_cleanup_control/a-at-current-cleanup" "current/current no-op cleanup pause" || true
+kill -TERM "$current_cleanup_pid" 2>/dev/null || true
+: > "$current_cleanup_control/release-a-current-cleanup"
+if wait "$current_cleanup_pid"; then current_cleanup_status=0; else current_cleanup_status=$?; fi
+if [ "$current_cleanup_status" -eq 0 ]; then
+  record_failure "interrupted current/current cleanup was accepted"
+elif grep -Fq "ALREADY CURRENT" "$current_cleanup_output"; then
+  record_failure "interrupted current/current cleanup printed ALREADY CURRENT"
+elif ! grep -Fq "upgrade interrupted; attempting guarded rollback" "$current_cleanup_output"; then
+  record_failure "interrupted current/current cleanup omitted guarded interruption marker"
+elif ! cmp -s "$terra_current" "$current_cleanup_target/$terra_file" ||
+     ! cmp -s "$sol_current" "$current_cleanup_target/$sol_file" ||
+     [ "$(cat "$current_cleanup_target/user-owned-sentinel" 2>/dev/null)" != "user-owned cleanup sentinel" ] ||
+     [ "$(role_and_upstream_signature "$current_cleanup_target" | sed -n '3,4p')" != "$current_cleanup_upstream_before" ]; then
+  record_failure "interrupted current/current cleanup changed current roles or unrelated bytes"
+elif [ -e "$current_cleanup_target/.react-sol-advisor-upgrade-lock" ] || [ -L "$current_cleanup_target/.react-sol-advisor-upgrade-lock" ] ||
+     find "$current_cleanup_target" -maxdepth 1 -type d -name '.react-sol-advisor-upgrade-txn.*' -print -quit | grep -q .; then
+  record_failure "interrupted current/current cleanup stranded owned lock or transaction artifacts"
+elif current_cleanup_retry=$(sh "$installer" --target-dir "$current_cleanup_target" --upgrade-known 2>&1); then
+  if ! printf '%s\n' "$current_cleanup_retry" | grep -Fq "ALREADY CURRENT" ||
+     [ "$(target_signature "$current_cleanup_target")" != "$current_cleanup_before" ]; then
+    record_failure "clean current/current retry was not idempotent after interruption"
+  else
+    pass "interrupted current/current cleanup preserves current roles and releases owned state"
+    assert_no_upgrade_artifacts "current/current cleanup retry" "$current_cleanup_target"
+  fi
+else
+  record_failure "clean current/current retry failed after interruption"
 fi
 
 # Two installers may both finish initial preflight and enter verifier-controlled staging,

@@ -548,11 +548,15 @@ if [ "$upgrade_known" -eq 1 ]; then
     current/current)
       # Idempotence is authorized only after this transaction owns the target-local
       # lock and has reclassified both roles plus Luna absence. Remove private staging
-      # and release the lock before exposing the successful no-op result.
+      # and release the lock before exposing the successful no-op result. A signal in
+      # this narrow no-op cleanup window is deferred so it cannot strand run-owned
+      # artifacts after `upgrade_active` has been cleared.
+      begin_signal_safe_transition
       upgrade_active=0
       current_cleanup_ok=1
       cleanup_transaction || current_cleanup_ok=0
       release_upgrade_lock || current_cleanup_ok=0
+      end_signal_safe_transition
       if [ "$current_cleanup_ok" -ne 1 ]; then
         fail "could not clean current known upgrade transaction"
       fi
