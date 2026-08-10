@@ -517,14 +517,14 @@ require(
 )
 
 # Release and CI integration.
-require("plugin manifest version is 0.1.1", manifest.get("version") == "0.1.1")
+require("plugin manifest version is 0.2.0", manifest.get("version") == "0.2.0")
 require(
-    "repository verifier asserts version 0.1.1",
-    has_all(verify, "manifest version is not 0.1.1", "= '0.1.1'"),
+    "repository verifier asserts version 0.2.0",
+    has_all(verify, "manifest version is not 0.2.0", "= '0.2.0'"),
 )
 require(
-    "general contract verifier asserts version 0.1.1 and references the focused gate",
-    has_all(contracts, "0.1.1", "verify-luna-thread-contracts.sh"),
+    "general contract verifier asserts version 0.2.0 while retaining the 0.1.1 record and focused gate",
+    has_all(contracts, "0.2.0", "0.1.1", "verify-luna-thread-contracts.sh"),
 )
 require(
     "changelog records the 0.1.1 exact-thread compatibility release",

@@ -28,14 +28,18 @@ for required in "$skill" "$role_contracts" "$model_routing" "$installer" "$test_
 done
 . "$test_support"
 
-[ "$(jq -r '.version' "$manifest")" = '0.1.1' ] ||
-  fail "manifest version is not 0.1.1"
+[ "$(jq -r '.version' "$manifest")" = '0.2.0' ] ||
+  fail "manifest version is not 0.2.0"
+grep -Fq '## 0.2.0 - 2026-08-10' "$changelog" ||
+  fail "changelog does not record version 0.2.0"
 grep -Fq '## 0.1.1 - 2026-08-08' "$changelog" ||
-  fail "changelog does not record version 0.1.1"
+  fail "changelog no longer retains version 0.1.1 history"
 grep -Fq 'sh plugins/react-sol-advisor/scripts/verify-luna-thread-contracts.sh' "$workflow" ||
   fail "GitHub Actions does not run verify-luna-thread-contracts.sh"
-grep -Fq '0.1.1' "$luna_thread_verifier" ||
-  fail "focused Luna thread verifier does not enforce version 0.1.1"
+grep -Fq '0.2.0' "$luna_thread_verifier" ||
+  fail "focused Luna thread verifier does not enforce version 0.2.0"
+grep -Fq '## 0.1.1 - 2026-08-08' "$luna_thread_verifier" ||
+  fail "focused Luna thread verifier does not retain 0.1.1 acceptance-record coverage"
 sh -n "$luna_thread_verifier" ||
   fail "focused Luna thread verifier has invalid shell syntax"
 

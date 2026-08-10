@@ -1,16 +1,24 @@
-# React Sol Advisor
+# Sol Development Advisor
 
-A Luna-first React, Next.js, React Native, Expo, and TypeScript delivery orchestrator
-for Codex. It routes green work through user-visible GPT-5.6 Luna / Max app tasks,
-escalates amber and red work to a native GPT-5.6 Terra / High role, and requires a
-fresh Sol / High review at commitment boundaries.
+Sol Development Advisor is a production delivery advisor for Codex. Every
+implementation task carries the domain-neutral `production-delivery` core; React/UI,
+TypeScript backend, Postgres/data, and worker/integration profiles are selected only
+when their owned paths and observable acceptance require them. It routes eligible green
+work through user-visible GPT-5.6 Luna / Max app tasks, escalates amber and red work to
+a native GPT-5.6 Terra / High role, and requires a fresh Sol / High review at the
+defined commitment boundaries.
+
+The technical plugin identifier remains `react-sol-advisor`, and
+`@react-sol-advisor` remains the legacy technical invocation for compatibility. React,
+Next.js, React Native, and Expo delivery remain first-class specialist use cases; they
+are no longer a prerequisite for backend, data, worker, or mixed delivery work.
 
 This is a separately namespaced fork of the Sol Advisor project. Upstream attribution,
 baseline SHA, and licensing are recorded in [UPSTREAM.md](UPSTREAM.md).
 
 ## What it does
 
-- **Economy** (default): bounded green React work -> Luna / Max; amber work -> Sol
+- **Economy** (default): bounded green work -> Luna / Max; amber work -> Sol
   decomposition with Luna subparts and Terra core; red work -> Terra / High plus fresh
   Sol review.
 - **Balanced**: green -> Luna / Max; amber -> Terra / High or explicitly bounded Luna
@@ -19,9 +27,10 @@ baseline SHA, and licensing are recorded in [UPSTREAM.md](UPSTREAM.md).
   explicit; amber/red -> Terra / High. All critical work receives a mandatory fresh Sol review.
 - **No silent fallback**: if a lane is unavailable, report the missing capability and
   require explicit authorization before switching to a more expensive lane.
-- **React production contract**: every delegated React task carries the core
-  production-delivery rules, with conditional Next.js, React Native/Expo, and
-  testing/accessibility references.
+- **Delivery profiles**: `production-delivery` is mandatory for every implementation
+  stream. React/UI, TypeScript backend, Postgres/data, and worker/integration profiles
+  are conditional, composable, and selected from owned paths plus acceptance—not from
+  risk or a blanket React assumption.
 - **Optional Linear intake**: read-only issue normalization when a connector is
   available; full plugin usability from pasted requirements when it is not.
 - **Capability-gated archiving**: archive accepted child tasks only when a supported
@@ -58,16 +67,24 @@ test -d "$plugin_dir"
 
 sh "$plugin_dir/scripts/install-agents.sh"
 sh "$plugin_dir/scripts/install-agents.sh" --check
+# Explicitly replace only the exact accepted 0.1.1 Terra/Sol pair:
+sh "$plugin_dir/scripts/install-agents.sh" --upgrade-known
 ```
 
 The installer:
 
 - Installs only `react-sol-advisor-terra-implementer.toml` and
   `react-sol-advisor-sol-reviewer.toml`.
-- Refuses modified, nonregular, symlinked, or partially unsafe destinations.
+- Default install and `--check` never overwrite roles. `--upgrade-known` is the sole
+  replacement path and accepts only the exact known 0.1.1 Terra/Sol pair; mixed,
+  missing, modified, nonregular, symlinked, unreadable, and retired-Luna states fail
+  before mutation.
+- Stages both current templates, uses guarded backups, rolls back a failed pair
+  replacement, and is idempotent for an exact current/current pair.
 - Rejects the unsupported `react-sol-advisor-luna-implementer.toml`; Luna remains an
   app-task lane.
-- Leaves upstream companion files untouched.
+- Never creates native Luna or reads, changes, or deletes upstream companion-role
+  files.
 
 Start a **fresh Codex task** after installing or updating native roles so custom-agent
 discovery sees the current profiles.
@@ -83,8 +100,9 @@ codex plugin add react-sol-advisor@react-sol-advisor
 
 ## Usage
 
-Use the plugin by mentioning `@react-sol-advisor` or selecting the **React Sol Advisor**
-skill in Codex. State the desired policy when it matters:
+Use the plugin by mentioning the compatibility invocation `@react-sol-advisor` or
+selecting the **Sol Development Advisor** skill in Codex. State the desired policy,
+owned slice, and observable acceptance when they matter:
 
 ```text
 @react-sol-advisor In this Next.js repository, add an accessible customer-status filter
@@ -107,7 +125,7 @@ for an example Luna task packet.
 
 ## Routing policy
 
-Before every delegation the primary session emits a `ROUTING DECISION` block:
+Before every delegation the primary session emits the following route block:
 
 ```text
 ROUTING DECISION
@@ -118,8 +136,8 @@ REASONS:
 - concise evidence-based reason
 OWNERSHIP:
 - exact files/modules or bounded responsibility
-QUALITY CONTRACT:
-- selected React/platform references
+DELIVERY PROFILES:
+- production-delivery always, plus selected conditional specialist profiles
 ESCALATION TRIGGERS:
 - exact conditions that stop or change the lane
 PR POLICY: none | commit-only | draft-after-acceptance
@@ -127,6 +145,30 @@ PR POLICY: none | commit-only | draft-after-acceptance
 
 The full green/amber/red criteria and policy mapping are in
 [plugins/react-sol-advisor/skills/orchestration/references/model-routing.md](plugins/react-sol-advisor/skills/orchestration/references/model-routing.md).
+
+Representative non-React and mixed invocations retain the same compatibility command:
+
+```text
+@react-sol-advisor Add a pure deterministic TypeScript mapper with table-driven tests.
+Use economy mode, production-delivery plus TypeScript backend, and leave an evidence
+handoff without creating a PR.
+
+@react-sol-advisor Add an idempotent tenant-safe Postgres backfill and verify its query
+plan. Use production-delivery plus Postgres/data; do not select React for database-only
+owned paths.
+
+@react-sol-advisor Add retry classification and reconciliation for an established
+provider worker. Use production-delivery plus worker/integration with deterministic
+queue and provider fakes.
+
+@react-sol-advisor Implement pg-boss admission, ownership, and orphan reconciliation.
+Use the Postgres/data and worker/integration profiles. Decompose bounded helpers from
+the Terra-owned consistency core; require a fresh Sol review if routing is red.
+
+@react-sol-advisor Add a React URL filter and its established REST backend endpoint.
+Split non-overlapping UI and backend workstreams; use profiles per workstream and do
+not require the React profile for the backend-owned files.
+```
 
 ## Luna task monitoring
 
@@ -195,10 +237,12 @@ sh plugins/react-sol-advisor/scripts/verify-hardening.sh
 sh plugins/react-sol-advisor/scripts/verify-contracts.sh
 sh plugins/react-sol-advisor/scripts/verify-luna-thread-contracts.sh
 sh plugins/react-sol-advisor/scripts/verify-tmpdir-portability.sh
+sh plugins/react-sol-advisor/scripts/verify-generalization.sh
+sh plugins/react-sol-advisor/scripts/verify-agent-upgrade.sh
 git diff --check
 ```
 
-The GitHub Actions workflow runs the five verifier scripts plus a base-to-head
+The GitHub Actions workflow runs all seven verifier scripts plus a base-to-head
 whitespace check on pushes to `main` and `feat/*` branches and on pull requests targeting
 `main`.
 
@@ -208,7 +252,9 @@ The suite checks:
 - Exact TOML role pins
 - Installer path, symlink, conflict, rollback, and retired-Luna safety
 - Runtime role/model/effort validation and observed isolation evidence
-- Routing and React production-delivery contracts
+- Routing, production-delivery, and conditional specialist-profile contracts
+- Safe known-version native-role upgrade, rollback, idempotence, and upstream/Luna
+  non-interference
 - Capability-adaptive Luna monitoring, exact-turn completion, correction identity,
   project registration, PR, and explicit archive evidence
 - Optional Linear intake

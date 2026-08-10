@@ -1,5 +1,5 @@
 #!/bin/sh
-# React Sol Advisor repository verification (Task 2 focused: role subsystem).
+# Sol Development Advisor repository verification (native-role subsystem).
 
 set -eu
 
@@ -28,14 +28,14 @@ for required in "$installer" "$runtime_inspector" "$test_support" "$luna_thread_
 done
 
 jq empty "$manifest"
-[ "$(jq -r '.version' "$manifest")" = '0.1.1' ] || fail "manifest version is not 0.1.1"
+[ "$(jq -r '.version' "$manifest")" = '0.2.0' ] || fail "manifest version is not 0.2.0"
 [ "$(jq -r '.name' "$manifest")" = 'react-sol-advisor' ] || fail "manifest name is not react-sol-advisor"
-[ "$(jq -r '.interface.displayName' "$manifest")" = 'React Sol Advisor' ] || fail "manifest displayName is not React Sol Advisor"
+[ "$(jq -r '.interface.displayName' "$manifest")" = 'Sol Development Advisor' ] || fail "manifest displayName is not Sol Development Advisor"
 pass "manifest JSON and identity"
 
 jq empty "$marketplace"
 [ "$(jq -r '.name' "$marketplace")" = 'react-sol-advisor' ] || fail "marketplace name is not react-sol-advisor"
-[ "$(jq -r '.interface.displayName' "$marketplace")" = 'React Sol Advisor' ] || fail "marketplace displayName is not React Sol Advisor"
+[ "$(jq -r '.interface.displayName' "$marketplace")" = 'Sol Development Advisor' ] || fail "marketplace displayName is not Sol Development Advisor"
 [ "$(jq -r '.plugins[0].name' "$marketplace")" = 'react-sol-advisor' ] || fail "marketplace plugin name is not react-sol-advisor"
 [ "$(jq -r '.plugins[0].source.path' "$marketplace")" = './plugins/react-sol-advisor' ] || fail "marketplace plugin path is not ./plugins/react-sol-advisor"
 pass "marketplace JSON and identity"

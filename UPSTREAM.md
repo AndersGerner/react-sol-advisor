@@ -1,6 +1,8 @@
 # Upstream attribution
 
-React Sol Advisor is derived from `DannyMac180/sol-advisor` and retains the MIT license.
+Sol Development Advisor is derived from `DannyMac180/sol-advisor` and retains the MIT
+license. Its user-facing delivery scope intentionally diverges beyond React while its
+repository, plugin, invocation, and native-role compatibility identifiers remain stable.
 
 ## Source
 
@@ -27,12 +29,18 @@ Copyright 2026 Daniel McAteer.
 
 ## Intentional divergence
 
-- New `react-sol-advisor` namespace for filenames, package name, and role names.
-- New version `0.1.0` with React-focused identity.
-- Luna-first default routing for React, Next.js, React Native, and Expo work, with economy, balanced, and critical policies.
-- React production-delivery skill and contract.
+- User-facing **Sol Development Advisor** identity at version `0.2.0`, with
+  `react-sol-advisor` retained as the repository directory, technical plugin name, and
+  `@react-sol-advisor` compatibility invocation.
+- Namespaced `react-sol-advisor-*` native role filenames and exact role IDs remain
+  compatible with the fork’s existing native installation surface.
+- Luna-first default routing for implementation work, with economy, balanced, and
+  critical policies unchanged.
+- Mandatory generic production delivery plus conditional React/UI, TypeScript backend,
+  Postgres/data, and worker/integration specialist profiles.
 - Optional Linear intake and capability-gated archiving.
-- Updated marketplace manifest, plugin manifest, README, examples, and verifier.
+- Safe exact-known-version native-role upgrade and updated marketplace manifest, plugin
+  manifest, README, examples, and verifier coverage.
 
 ## Coexistence
 

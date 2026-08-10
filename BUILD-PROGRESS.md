@@ -1,4 +1,4 @@
-# React Sol Advisor build progress
+# Sol Development Advisor build progress
 
 This file is an execution ledger. Do not mark a deliverable complete until its command,
 result, or explicit capability limitation is recorded below.
@@ -215,3 +215,19 @@ host; those identities permit the first wait/read operation; the first exact rea
 populate the unresolved child-worktree field; the parent independently verifies it; and
 all subsequent reads remain pinned to that same worktree. Exact worktree evidence remains
 mandatory before correction, acceptance, PR authorization, or dependent-task creation.
+
+## 0.2.0 Sol Development Advisor generalization build
+
+This appended ledger records the 0.2.0 local implementation only. It does not replace
+the historical 0.1.x React Sol Advisor evidence above, and it does not claim hosted CI
+or a final independent review.
+
+| Scope | Local evidence | Status |
+|---|---|---|
+| User-facing identity | Manifest and marketplace use `Sol Development Advisor`; technical `react-sol-advisor` name/path and `@react-sol-advisor` invocation remain | Complete locally |
+| Delivery contracts | Mandatory production core plus conditional React/UI, TypeScript backend, Postgres/data, and worker/integration profiles | Complete locally |
+| Routing and packets | Canonical delivery-profile selection and generalized non-React/mixed packets; accepted Luna lifecycle and economics preserved | Complete locally |
+| Native roles | Domain-neutral Terra/Sol prose and safe explicit exact-0.1.1 `--upgrade-known` path with rollback/idempotence coverage | Complete locally |
+| Documentation | README, changelog, and upstream attribution updated for the compatibility-preserving product generalization | Complete locally |
+| Focused acceptance | `verify-generalization.sh` and `verify-agent-upgrade.sh` | Complete locally: both passed |
+| Hosted CI / independent final review | No hosted run or final review is asserted by this ledger | Not claimed |
