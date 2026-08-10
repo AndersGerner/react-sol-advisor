@@ -212,9 +212,9 @@ Act as Sol Development Advisor's sole implementation worker. Resolve the supplie
 within the settled architecture, preserve every stated interface and constraint, and
 surface ambiguity instead of redesigning the architecture.
 
-For every implementation task, production-delivery is mandatory. Select and load only
-the conditional profiles required by the owned paths and acceptance criteria through
-[delivery-profiles.md](delivery-profiles.md); do not require React for non-React work.
+For every implementation task, production-delivery is mandatory. Load only the parent-selected
+profiles named in `DELIVERY PROFILES`; do not select/change profiles,
+architecture, or routing. Do not require React for non-React work.
 
 <paste and complete the Shared implementation contract>
 ~~~

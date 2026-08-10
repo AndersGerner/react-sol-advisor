@@ -55,6 +55,28 @@ sha256_file() {
 
 sh -n "$installer" || record_failure "install-agents.sh has invalid shell syntax"
 sh -n "$test_support" || record_failure "verifier-test-support.sh has invalid shell syntax"
+if grep -Eq 'RSA_INSTALL_TEST_SWAP|run_swap_hook|swap-terra|swap-sol' "$installer"; then
+  record_failure "installer retains an arbitrary production swap-source test surface"
+else
+  pass "installer exposes no arbitrary production swap-source test surface"
+fi
+rollback_masked=$(awk '
+  /^  rollback_upgrade\(\) \{/ { in_rollback = 1; next }
+  in_rollback && /^  upgrade_on_exit\(\) \{/ { exit }
+  in_rollback && /trap/ && /HUP INT TERM/ { masked = 1 }
+  in_rollback && /upgrade_active=0/ { if (masked) print "yes"; exit }
+' "$installer")
+signal_masked=$(awk '
+  /^  upgrade_on_signal\(\) \{/ { in_signal = 1; next }
+  in_signal && /^  # Install the transaction traps/ { exit }
+  in_signal && /trap/ && /HUP INT TERM/ { masked = 1 }
+  in_signal && /exit 1/ { if (masked) print "yes"; exit }
+' "$installer")
+if [ "$rollback_masked" = yes ] && [ "$signal_masked" = yes ]; then
+  pass "rollback masks repeat HUP/INT/TERM before clearing active state and signal exit"
+else
+  record_failure "rollback does not mask repeat HUP/INT/TERM before active-state mutation"
+fi
 
 . "$test_support"
 tmp_base=$(rsa_resolve_verifier_tmp_base) || {
@@ -183,9 +205,9 @@ assert_unchanged_refusal \
   "pre-existing upgrade backup" "$backup_target" "refusing existing upgrade backup" \
   sh "$installer" --target-dir "$backup_target" --upgrade-known
 
-# Simulate a concurrent process creating an unknown Sol backup between the preflight
-# absence check and the second hard-link call. The installer may clean only the Terra
-# backup it created itself; it must preserve the unknown Sol sentinel and both old role
+# Simulate a concurrent process creating an unknown Sol backup inside the private
+# transaction. The installer may clean only its exact Terra artifact; it must preserve
+# the unknown sentinel in an explicitly reported recovery transaction and both old role
 # destinations unchanged.
 toctou_target=$tmp_dir/backup-creation-race
 prepare_stale_pair "$toctou_target" || record_failure "could not prepare backup race fixture"
@@ -201,10 +223,10 @@ fake_ln=$fake_bin/ln
 printf '%s\n' \
   '#!/bin/sh' \
   'case "$2" in' \
-  '  */.react-sol-advisor-upgrade-terra.backup)' \
+  '  */terra.backup)' \
   '    exec "$RSA_TEST_REAL_LN" "$@"' \
   '    ;;' \
-  '  */.react-sol-advisor-upgrade-sol.backup)' \
+  '  */sol.backup)' \
   '    cp "$RSA_TEST_SOL_BACKUP_SENTINEL" "$2"' \
   '    exit 1' \
   '    ;;' \
@@ -215,21 +237,152 @@ printf '%s\n' \
 chmod 755 "$fake_ln" || record_failure "could not make fake ln wrapper executable"
 if toctou_output=$(RSA_TEST_REAL_LN="$real_ln" RSA_TEST_SOL_BACKUP_SENTINEL="$sol_backup_sentinel" PATH="$fake_bin:$PATH" sh "$installer" --target-dir "$toctou_target" --upgrade-known 2>&1); then
   record_failure "guarded backup creation race was accepted"
-elif ! printf '%s\n' "$toctou_output" | grep -Fq "could not create guarded upgrade backups"; then
+elif ! printf '%s\n' "$toctou_output" | grep -Fq "could not create guarded Sol upgrade backup"; then
   record_failure "guarded backup creation race omitted exact failure marker"
 elif ! cmp -s "$terra_fixture" "$toctou_target/$terra_file" || ! cmp -s "$sol_fixture" "$toctou_target/$sol_file"; then
   record_failure "guarded backup creation race changed an accepted 0.1.1 destination"
-elif ! cmp -s "$sol_backup_sentinel" "$toctou_target/.react-sol-advisor-upgrade-sol.backup"; then
+elif ! printf '%s\n' "$toctou_output" | grep -Fq "private recovery transaction"; then
+  record_failure "guarded backup creation race did not report its preserved recovery transaction"
+elif ! recovery_backup=$(find "$toctou_target" -path '*/sol.backup' -type f -print -quit) || [ -z "$recovery_backup" ] || ! cmp -s "$sol_backup_sentinel" "$recovery_backup"; then
   record_failure "guarded backup creation race did not preserve unknown Sol backup sentinel"
-elif [ -e "$toctou_target/.react-sol-advisor-upgrade-terra.backup" ] || [ -L "$toctou_target/.react-sol-advisor-upgrade-terra.backup" ]; then
-  record_failure "guarded backup creation race left the run-created Terra backup"
-elif stage_paths=$(find "$toctou_target" -maxdepth 1 -type f -name '.react-sol-advisor-upgrade-*' ! -name '*.backup' -print) && [ -n "$stage_paths" ]; then
-  record_failure "guarded backup creation race left staged upgrade files: $stage_paths"
+elif terra_backup_paths=$(find "$toctou_target" -path '*/terra.backup' -type f -print) && [ -n "$terra_backup_paths" ]; then
+  record_failure "guarded backup creation race left a run-created Terra backup"
 elif [ "$(role_and_upstream_signature "$toctou_target")" != "$toctou_before" ]; then
   record_failure "guarded backup creation race changed a role or upstream sentinel"
 else
-  pass "guarded backup creation failure preserves concurrent backup and cleans owned state"
+  pass "guarded backup creation failure preserves concurrent backup and reports private recovery state"
 fi
+
+# A destination can change after the final pair preflight. Terra must not overwrite
+# that unknown replacement, Sol must remain old, and the private old state is retained
+# only as an explicitly reported recovery transaction.
+fake_mv_bin=$tmp_dir/fake-mv-bin
+mkdir "$fake_mv_bin" || record_failure "could not prepare fake mv directory"
+real_mv=$(command -v mv) || record_failure "could not resolve system mv"
+fake_mv=$fake_mv_bin/mv
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$1:$2" in' \
+  '  "$RSA_TEST_TERRA_DEST":*/terra.displaced)' \
+  '    "$RSA_TEST_REAL_MV" "$RSA_TEST_TERRA_SENTINEL" "$1"' \
+  '    exec "$RSA_TEST_REAL_MV" "$@"' \
+  '    ;;' \
+  '  "$RSA_TEST_SOL_DEST":*/sol.displaced)' \
+  '    "$RSA_TEST_REAL_MV" "$RSA_TEST_SOL_SENTINEL" "$1"' \
+  '    exec "$RSA_TEST_REAL_MV" "$@"' \
+  '    ;;' \
+  '  *)' \
+  '    exec "$RSA_TEST_REAL_MV" "$@"' \
+  '    ;;' \
+  'esac' > "$fake_mv" || record_failure "could not create fake mv wrapper"
+chmod 755 "$fake_mv" || record_failure "could not make fake mv wrapper executable"
+
+swap_terra_target=$tmp_dir/destination-swap-terra
+prepare_stale_pair "$swap_terra_target" || record_failure "could not prepare Terra destination swap fixture"
+add_upstream_sentinels "$swap_terra_target" || record_failure "could not prepare Terra destination swap sentinels"
+swap_terra_reference=$tmp_dir/unknown-terra-reference
+printf '%s\n' "concurrent unknown Terra destination" > "$swap_terra_reference" ||
+  record_failure "could not prepare unknown Terra destination"
+swap_terra_inject=$swap_terra_target/.verifier-unknown-terra
+cp "$swap_terra_reference" "$swap_terra_inject" || record_failure "could not prepare Terra race injection"
+swap_terra_upstream_before=$(role_and_upstream_signature "$swap_terra_target" | sed -n '3,4p')
+if swap_terra_output=$(RSA_TEST_REAL_MV="$real_mv" RSA_TEST_TERRA_DEST="$swap_terra_target/$terra_file" RSA_TEST_TERRA_SENTINEL="$swap_terra_inject" PATH="$fake_mv_bin:$PATH" sh "$installer" --target-dir "$swap_terra_target" --upgrade-known 2>&1); then
+  record_failure "Terra destination swap was accepted"
+elif ! printf '%s\n' "$swap_terra_output" | grep -Fq "Terra displace revalidation failed; restored unknown destination without overwrite" ||
+     ! printf '%s\n' "$swap_terra_output" | grep -Fq "private recovery transaction"; then
+  record_failure "Terra destination swap omitted exact post-displacement revalidation markers"
+elif printf '%s\n' "$swap_terra_output" | grep -Fq "known Terra destination changed before publication"; then
+  record_failure "Terra destination swap was rejected by pre-displacement classification instead of CAS revalidation"
+elif ! cmp -s "$swap_terra_reference" "$swap_terra_target/$terra_file" ||
+     ! cmp -s "$sol_fixture" "$swap_terra_target/$sol_file"; then
+  record_failure "Terra destination swap overwrote unknown Terra or accepted a partial publication"
+elif [ -e "$swap_terra_target/$luna_file" ] || [ -L "$swap_terra_target/$luna_file" ] ||
+     [ "$(role_and_upstream_signature "$swap_terra_target" | sed -n '3,4p')" != "$swap_terra_upstream_before" ]; then
+  record_failure "Terra destination swap changed Luna or upstream sentinels"
+elif ! find "$swap_terra_target" -maxdepth 1 -type d -name '.react-sol-advisor-upgrade-txn.*' -print -quit | grep -q .; then
+  record_failure "Terra destination swap did not retain explicitly reported private recovery"
+elif ! swap_terra_recovery=$(find "$swap_terra_target" -path '*/terra.backup' -type f -print -quit) || [ -z "$swap_terra_recovery" ] || ! cmp -s "$terra_fixture" "$swap_terra_recovery"; then
+  record_failure "Terra destination swap did not preserve the guarded old Terra recovery copy"
+elif swap_terra_extra=$(find "$swap_terra_target" -path '*/.react-sol-advisor-upgrade-txn.*/*' ! -name terra.backup -print) && [ -n "$swap_terra_extra" ]; then
+  record_failure "Terra destination swap left owned private artifacts beyond the reported recovery copy: $swap_terra_extra"
+else
+  pass "Terra destination swap preserves unknown content and fails without partial publication"
+fi
+
+# Once Terra is published, a concurrent unknown Sol replacement must survive and the
+# Terra side must roll back through a no-clobber publication of the guarded old state.
+swap_sol_target=$tmp_dir/destination-swap-sol
+prepare_stale_pair "$swap_sol_target" || record_failure "could not prepare Sol destination swap fixture"
+add_upstream_sentinels "$swap_sol_target" || record_failure "could not prepare Sol destination swap sentinels"
+swap_sol_reference=$tmp_dir/unknown-sol-reference
+printf '%s\n' "concurrent unknown Sol destination" > "$swap_sol_reference" ||
+  record_failure "could not prepare unknown Sol destination"
+swap_sol_inject=$swap_sol_target/.verifier-unknown-sol
+cp "$swap_sol_reference" "$swap_sol_inject" || record_failure "could not prepare Sol race injection"
+swap_sol_upstream_before=$(role_and_upstream_signature "$swap_sol_target" | sed -n '3,4p')
+if swap_sol_output=$(RSA_TEST_REAL_MV="$real_mv" RSA_TEST_SOL_DEST="$swap_sol_target/$sol_file" RSA_TEST_SOL_SENTINEL="$swap_sol_inject" PATH="$fake_mv_bin:$PATH" sh "$installer" --target-dir "$swap_sol_target" --upgrade-known 2>&1); then
+  record_failure "Sol destination swap was accepted"
+elif ! printf '%s\n' "$swap_sol_output" | grep -Fq "Sol displace revalidation failed; restored unknown destination without overwrite" ||
+     ! printf '%s\n' "$swap_sol_output" | grep -Fq "ROLLBACK: restored known 0.1.1 Terra template" ||
+     ! printf '%s\n' "$swap_sol_output" | grep -Fq "private recovery transaction"; then
+  record_failure "Sol destination swap omitted exact post-displacement rollback/recovery markers"
+elif printf '%s\n' "$swap_sol_output" | grep -Fq "known Sol destination changed before publication"; then
+  record_failure "Sol destination swap was rejected by pre-displacement classification instead of CAS revalidation"
+elif ! cmp -s "$terra_fixture" "$swap_sol_target/$terra_file" ||
+     ! cmp -s "$swap_sol_reference" "$swap_sol_target/$sol_file"; then
+  record_failure "Sol destination swap lost unknown Sol content or failed to restore Terra"
+elif [ -e "$swap_sol_target/$luna_file" ] || [ -L "$swap_sol_target/$luna_file" ] ||
+     [ "$(role_and_upstream_signature "$swap_sol_target" | sed -n '3,4p')" != "$swap_sol_upstream_before" ]; then
+  record_failure "Sol destination swap changed Luna or upstream sentinels"
+elif ! find "$swap_sol_target" -maxdepth 1 -type d -name '.react-sol-advisor-upgrade-txn.*' -print -quit | grep -q .; then
+  record_failure "Sol destination swap did not retain explicitly reported private recovery"
+elif ! swap_sol_recovery=$(find "$swap_sol_target" -path '*/sol.backup' -type f -print -quit) || [ -z "$swap_sol_recovery" ] || ! cmp -s "$sol_fixture" "$swap_sol_recovery"; then
+  record_failure "Sol destination swap did not preserve the guarded old Sol recovery copy"
+elif swap_sol_extra=$(find "$swap_sol_target" -path '*/.react-sol-advisor-upgrade-txn.*/*' ! -name sol.backup -print) && [ -n "$swap_sol_extra" ]; then
+  record_failure "Sol destination swap left owned private artifacts beyond the reported recovery copy: $swap_sol_extra"
+else
+  pass "Sol destination swap preserves unknown content and restores Terra through guarded rollback"
+fi
+
+# Signals at both early transaction points must restore exact old/old state and remove
+# all run-owned stages, backups, and transaction slots.
+term_stage_target=$tmp_dir/term-after-stage
+prepare_stale_pair "$term_stage_target" || record_failure "could not prepare TERM-after-stage fixture"
+add_upstream_sentinels "$term_stage_target" || record_failure "could not prepare TERM-after-stage sentinels"
+term_stage_before=$(target_signature "$term_stage_target")
+if term_stage_output=$(RSA_INSTALL_TEST_HOOK=term-after-terra-stage sh "$installer" --target-dir "$term_stage_target" --upgrade-known 2>&1); then
+  record_failure "TERM after Terra stage was accepted"
+elif ! printf '%s\n' "$term_stage_output" | grep -Fq "TEST INJECTION: TERM after Terra stage" ||
+     ! cmp -s "$terra_fixture" "$term_stage_target/$terra_file" ||
+     ! cmp -s "$sol_fixture" "$term_stage_target/$sol_file" ||
+     [ "$(target_signature "$term_stage_target")" != "$term_stage_before" ]; then
+  record_failure "TERM after Terra stage did not restore exact unchanged state"
+else
+  assert_no_upgrade_artifacts "TERM after Terra stage" "$term_stage_target"
+fi
+
+term_backup_target=$tmp_dir/term-after-backup
+prepare_stale_pair "$term_backup_target" || record_failure "could not prepare TERM-after-backup fixture"
+add_upstream_sentinels "$term_backup_target" || record_failure "could not prepare TERM-after-backup sentinels"
+term_backup_before=$(target_signature "$term_backup_target")
+if term_backup_output=$(RSA_INSTALL_TEST_HOOK=term-after-terra-backup sh "$installer" --target-dir "$term_backup_target" --upgrade-known 2>&1); then
+  record_failure "TERM after Terra backup was accepted"
+elif ! printf '%s\n' "$term_backup_output" | grep -Fq "TEST INJECTION: TERM after Terra backup" ||
+     ! cmp -s "$terra_fixture" "$term_backup_target/$terra_file" ||
+     ! cmp -s "$sol_fixture" "$term_backup_target/$sol_file" ||
+     [ "$(target_signature "$term_backup_target")" != "$term_backup_before" ]; then
+  record_failure "TERM after Terra backup did not restore exact unchanged state"
+else
+  assert_no_upgrade_artifacts "TERM after Terra backup" "$term_backup_target"
+fi
+
+unreadable_target=$tmp_dir/unreadable-digest
+prepare_stale_pair "$unreadable_target" || record_failure "could not prepare unreadable digest fixture"
+add_upstream_sentinels "$unreadable_target" || record_failure "could not prepare unreadable digest sentinels"
+assert_unchanged_refusal \
+  "deterministic unreadable Terra digest" "$unreadable_target" "Terra destination is unreadable" \
+  env RSA_INSTALL_TEST_HOOK=unreadable-terra sh "$installer" --target-dir "$unreadable_target" --upgrade-known
+assert_no_upgrade_artifacts "deterministic unreadable Terra digest" "$unreadable_target"
 
 # Exact accepted pair is the sole automatic-upgrade admission case.
 upgrade_target=$tmp_dir/upgrade-known
@@ -255,10 +408,9 @@ else
   record_failure "--upgrade-known rejected the exact accepted 0.1.1 role pair"
 fi
 
-# After both replacements pass exact-current and Luna checks, backup cleanup is no
-# longer a role-pair transaction. Simulate a failure removing the Terra backup after
-# the Sol backup has been removed: both destinations must remain current/current, the
-# old Terra recovery artifact must survive, and no EXIT rollback may create a mixed pair.
+# After both replacements pass exact-current and Luna checks, cleanup is no longer a
+# role-pair transaction. A private cleanup failure must retain current/current and the
+# private old recovery artifact; no EXIT rollback may create a mixed pair.
 cleanup_target=$tmp_dir/backup-cleanup-failure
 prepare_stale_pair "$cleanup_target" || record_failure "could not prepare cleanup failure fixture"
 add_upstream_sentinels "$cleanup_target" || record_failure "could not prepare cleanup failure sentinels"
@@ -271,7 +423,7 @@ printf '%s\n' \
   '#!/bin/sh' \
   'for argument in "$@"; do' \
   '  case "$argument" in' \
-  '    */.react-sol-advisor-upgrade-terra.backup)' \
+  '    */terra.backup)' \
   '      exit 1' \
   '      ;;' \
   '  esac' \
@@ -280,7 +432,7 @@ printf '%s\n' \
 chmod 755 "$fake_rm" || record_failure "could not make fake rm wrapper executable"
 if cleanup_output=$(RSA_TEST_REAL_RM="$real_rm" PATH="$fake_rm_bin:$PATH" sh "$installer" --target-dir "$cleanup_target" --upgrade-known 2>&1); then
   record_failure "guarded backup cleanup failure was accepted"
-elif ! printf '%s\n' "$cleanup_output" | grep -Fq "could not remove guarded upgrade backups"; then
+elif ! printf '%s\n' "$cleanup_output" | grep -Fq "could not clean committed private upgrade transaction"; then
   record_failure "guarded backup cleanup failure omitted exact cleanup marker"
 elif ! cmp -s "$terra_current" "$cleanup_target/$terra_file" || ! cmp -s "$sol_current" "$cleanup_target/$sol_file"; then
   record_failure "guarded backup cleanup failure produced a mixed or stale role pair"
@@ -288,14 +440,10 @@ elif [ -e "$cleanup_target/$luna_file" ] || [ -L "$cleanup_target/$luna_file" ];
   record_failure "guarded backup cleanup failure created a native Luna role"
 elif [ "$(role_and_upstream_signature "$cleanup_target" | sed -n '3,4p')" != "$cleanup_upstream_before" ]; then
   record_failure "guarded backup cleanup failure changed an upstream sentinel"
-elif ! cmp -s "$terra_fixture" "$cleanup_target/.react-sol-advisor-upgrade-terra.backup"; then
-  record_failure "guarded backup cleanup failure did not preserve the old Terra recovery artifact"
-elif [ -e "$cleanup_target/.react-sol-advisor-upgrade-sol.backup" ] || [ -L "$cleanup_target/.react-sol-advisor-upgrade-sol.backup" ]; then
-  record_failure "guarded backup cleanup failure did not remove the verified Sol backup first"
-elif stage_paths=$(find "$cleanup_target" -maxdepth 1 -type f -name '.react-sol-advisor-upgrade-*' ! -name '*.backup' -print) && [ -n "$stage_paths" ]; then
-  record_failure "guarded backup cleanup failure left staged upgrade files: $stage_paths"
+elif ! cleanup_recovery=$(find "$cleanup_target" -path '*/terra.backup' -type f -print -quit) || [ -z "$cleanup_recovery" ] || ! cmp -s "$terra_fixture" "$cleanup_recovery"; then
+  record_failure "private cleanup failure did not preserve the old Terra recovery artifact"
 else
-  pass "guarded backup cleanup failure preserves current/current and old recovery state"
+  pass "private cleanup failure preserves current/current and old recovery state"
 fi
 
 # Unknown and unsafe states are all preflight failures. Every case begins with a known

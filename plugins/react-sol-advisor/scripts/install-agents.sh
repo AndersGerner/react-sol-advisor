@@ -43,6 +43,9 @@ path_exists() {
 }
 
 sha256_file() {
+  if [ "${RSA_INSTALL_TEST_HOOK-}" = unreadable-terra ] && [ "${terra_destination-}" = "$1" ]; then
+    return 0
+  fi
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" 2>/dev/null | awk 'NF && length($1) == 64 { print $1; exit }'
   else
@@ -165,37 +168,6 @@ has_exact_digest() {
     [ "$(sha256_file "$file")" = "$expected_digest" ]
 }
 
-remove_run_created_backup() {
-  label=$1
-  backup=$2
-  expected_digest=$3
-  created_this_run=$4
-
-  [ "$created_this_run" -eq 1 ] || return 0
-  if has_exact_digest "$backup" "$expected_digest"; then
-    if ! rm -f "$backup"; then
-      printf '%s\n' "ERROR: could not remove run-created guarded $label backup: $backup" >&2
-    fi
-  else
-    printf '%s\n' "ERROR: guarded $label backup changed; preserved for recovery: $backup" >&2
-  fi
-}
-
-remove_verified_backup() {
-  label=$1
-  backup=$2
-  expected_digest=$3
-
-  if ! has_exact_digest "$backup" "$expected_digest"; then
-    printf '%s\n' "ERROR: guarded $label backup changed; preserved for recovery: $backup" >&2
-    return 1
-  fi
-  rm -f "$backup" || {
-    printf '%s\n' "ERROR: could not remove guarded $label backup: $backup" >&2
-    return 1
-  }
-}
-
 preflight_failed=0
 if path_exists "$target_dir" && { [ -L "$target_dir" ] || [ ! -d "$target_dir" ]; }; then
   report "target directory is not a real directory: $target_dir"
@@ -239,6 +211,10 @@ elif [ "$upgrade_known" -eq 1 ]; then
     ''|sol) ;;
     *) report "RSA_INSTALL_TEST_FAIL_REPLACE must be empty or sol" ;;
   esac
+  case "${RSA_INSTALL_TEST_HOOK-}" in
+    ''|term-after-terra-stage|term-after-terra-backup|unreadable-terra) ;;
+    *) report "RSA_INSTALL_TEST_HOOK is unsupported" ;;
+  esac
 else
   case "$terra_state" in
     current|missing) ;;
@@ -271,117 +247,240 @@ if [ "$upgrade_known" -eq 1 ] && [ "$terra_state/$sol_state" = current/current ]
 fi
 
 if [ "$upgrade_known" -eq 1 ]; then
-  terra_backup_created=0
-  sol_backup_created=0
-  stage_terra=$(mktemp "$target_dir/.react-sol-advisor-upgrade-terra.XXXXXX") ||
-    fail "could not stage Terra upgrade"
-  stage_sol=$(mktemp "$target_dir/.react-sol-advisor-upgrade-sol.XXXXXX") || {
-    rm -f "$stage_terra"
-    fail "could not stage Sol upgrade"
-  }
-  if ! cp "$terra_template" "$stage_terra" ||
-     ! cp "$sol_template" "$stage_sol" ||
-     ! cmp -s "$terra_template" "$stage_terra" ||
-     ! cmp -s "$sol_template" "$stage_sol"; then
-    rm -f "$stage_terra" "$stage_sol"
-    fail "could not stage and verify both upgrade templates"
-  fi
-
-  if [ "$(classify "$terra_destination" "$terra_template" "$terra_old")" != known-stale-0.1.1 ] ||
-     [ "$(classify "$sol_destination" "$sol_template" "$sol_old")" != known-stale-0.1.1 ]; then
-    rm -f "$stage_terra" "$stage_sol"
-    fail "known upgrade destinations changed after preflight"
-  fi
-
-  if ln "$terra_destination" "$terra_backup"; then
-    terra_backup_created=1
-  else
-    rm -f "$stage_terra" "$stage_sol"
-    fail "could not create guarded upgrade backups"
-  fi
-
-  if ln "$sol_destination" "$sol_backup"; then
-    sol_backup_created=1
-  else
-    rm -f "$stage_terra" "$stage_sol"
-    remove_run_created_backup Terra "$terra_backup" "$terra_old" "$terra_backup_created"
-    fail "could not create guarded upgrade backups"
-  fi
-
-  if ! has_exact_digest "$terra_backup" "$terra_old" ||
-     ! has_exact_digest "$sol_backup" "$sol_old" ||
-     ! cmp -s "$terra_backup" "$terra_destination" ||
-     ! cmp -s "$sol_backup" "$sol_destination"; then
-    rm -f "$stage_terra" "$stage_sol"
-    remove_run_created_backup Sol "$sol_backup" "$sol_old" "$sol_backup_created"
-    remove_run_created_backup Terra "$terra_backup" "$terra_old" "$terra_backup_created"
-    fail "guarded backups are not exact known 0.1.1 files"
-  fi
-  if [ "$(classify "$terra_destination" "$terra_template" "$terra_old")" != known-stale-0.1.1 ] ||
-     [ "$(classify "$sol_destination" "$sol_template" "$sol_old")" != known-stale-0.1.1 ]; then
-    rm -f "$stage_terra" "$stage_sol"
-    remove_run_created_backup Sol "$sol_backup" "$sol_old" "$sol_backup_created"
-    remove_run_created_backup Terra "$terra_backup" "$terra_old" "$terra_backup_created"
-    fail "known upgrade destinations changed before mutation"
-  fi
-  if [ -e "$luna_destination" ] || [ -L "$luna_destination" ]; then
-    rm -f "$stage_terra" "$stage_sol"
-    remove_run_created_backup Sol "$sol_backup" "$sol_old" "$sol_backup_created"
-    remove_run_created_backup Terra "$terra_backup" "$terra_old" "$terra_backup_created"
-    fail "native Luna companion appeared before upgrade mutation: $luna_destination"
-  fi
-
+  # All mutable upgrade artifacts live in a unique private directory beneath the exact
+  # target.  Nothing is written to a public recovery filename: pre-existing legacy
+  # backup names are still refused above, but each run owns only its private slot.
   upgrade_active=1
-  rollback_upgrade() {
-    [ "${upgrade_active-0}" -eq 1 ] || return 0
-    upgrade_active=0
-    rollback_role Sol "$sol_destination" "$sol_template" "$sol_backup" "$sol_old"
-    rollback_role Terra "$terra_destination" "$terra_template" "$terra_backup" "$terra_old"
-    rm -f "$stage_terra" "$stage_sol" 2>/dev/null || true
+  upgrade_exit_handled=0
+  transaction_dir=''
+  stage_terra=''
+  stage_sol=''
+  terra_private_backup=''
+  sol_private_backup=''
+  terra_displaced=''
+  sol_displaced=''
+  terra_rollback_current=''
+  sol_rollback_current=''
+  terra_current=$(sha256_file "$terra_template")
+  sol_current=$(sha256_file "$sol_template")
+  [ -n "$terra_current" ] && [ -n "$sol_current" ] || fail "could not digest shipped upgrade templates"
+
+  remove_private_exact() {
+    label=$1
+    artifact=$2
+    expected=$3
+    [ -n "$artifact" ] && path_exists "$artifact" || return 0
+    if ! has_exact_digest "$artifact" "$expected"; then
+      printf '%s\n' "ERROR: private $label artifact changed; preserved for recovery: $artifact" >&2
+      return 1
+    fi
+    rm -f "$artifact" || {
+      printf '%s\n' "ERROR: could not remove private $label artifact: $artifact" >&2
+      return 1
+    }
   }
+
+  cleanup_transaction() {
+    preserve_artifact=${1-}
+    [ -n "$transaction_dir" ] && [ -d "$transaction_dir" ] || return 0
+    cleanup_ok=1
+    [ "$stage_terra" = "$preserve_artifact" ] || remove_private_exact "Terra stage" "$stage_terra" "$terra_current" || cleanup_ok=0
+    [ "$stage_sol" = "$preserve_artifact" ] || remove_private_exact "Sol stage" "$stage_sol" "$sol_current" || cleanup_ok=0
+    [ "$terra_private_backup" = "$preserve_artifact" ] || remove_private_exact "Terra backup" "$terra_private_backup" "$terra_old" || cleanup_ok=0
+    [ "$sol_private_backup" = "$preserve_artifact" ] || remove_private_exact "Sol backup" "$sol_private_backup" "$sol_old" || cleanup_ok=0
+    [ "$terra_displaced" = "$preserve_artifact" ] || remove_private_exact "Terra displaced destination" "$terra_displaced" "$terra_old" || cleanup_ok=0
+    [ "$sol_displaced" = "$preserve_artifact" ] || remove_private_exact "Sol displaced destination" "$sol_displaced" "$sol_old" || cleanup_ok=0
+    [ "$terra_rollback_current" = "$preserve_artifact" ] || remove_private_exact "Terra rollback destination" "$terra_rollback_current" "$terra_current" || cleanup_ok=0
+    [ "$sol_rollback_current" = "$preserve_artifact" ] || remove_private_exact "Sol rollback destination" "$sol_rollback_current" "$sol_current" || cleanup_ok=0
+    if ! rmdir "$transaction_dir" 2>/dev/null; then
+      printf '%s\n' "ERROR: private upgrade transaction preserved for recovery: $transaction_dir" >&2
+      cleanup_ok=0
+    fi
+    [ "$cleanup_ok" -eq 1 ]
+  }
+
   rollback_role() {
     label=$1
     destination=$2
     template=$3
-    backup=$4
-    expected_digest=$5
+    old_digest=$4
+    current_digest=$5
+    backup=$6
+    rollback_current=$7
+    role_state=$(classify "$destination" "$template" "$old_digest")
 
-    [ -e "$backup" ] || return 0
+    case "$role_state" in
+      known-stale-0.1.1)
+        return 0
+        ;;
+      current)
+        if path_exists "$rollback_current"; then
+          printf '%s\n' "ERROR: private $label rollback slot already exists; preserved for recovery: $transaction_dir" >&2
+          return 1
+        fi
+        if ! mv "$destination" "$rollback_current" || ! has_exact_digest "$rollback_current" "$current_digest"; then
+          printf '%s\n' "ERROR: could not safely displace current $label during rollback; preserved for recovery: $transaction_dir" >&2
+          return 1
+        fi
+        ;;
+      missing)
+        ;;
+      *)
+        recovery_artifact=$backup
+        printf '%s\n' "ERROR: refusing to roll back concurrent changed $label destination; preserved for recovery: $transaction_dir" >&2
+        return 1
+        ;;
+    esac
 
-    if ! has_exact_digest "$backup" "$expected_digest"; then
-      printf '%s\n' "ERROR: guarded $label backup changed; preserved for recovery: $backup" >&2
-      return 0
+    if ! has_exact_digest "$backup" "$old_digest"; then
+      printf '%s\n' "ERROR: guarded $label backup changed; preserved for recovery: $transaction_dir" >&2
+      return 1
     fi
-
-    if [ -f "$destination" ] && [ ! -L "$destination" ] && cmp -s "$template" "$destination"; then
-      if mv "$backup" "$destination"; then
-        printf '%s\n' "ROLLBACK: restored known 0.1.1 $label template" >&2
-      else
-        printf '%s\n' "ERROR: refusing to roll back changed $label destination: $destination" >&2
-      fi
-    elif [ -f "$destination" ] && [ ! -L "$destination" ] && cmp -s "$backup" "$destination"; then
-      if ! rm -f "$backup"; then
-        printf '%s\n' "ERROR: could not remove guarded $label backup: $backup" >&2
-      fi
-    else
-      printf '%s\n' "ERROR: refusing to roll back changed $label destination; preserved backup: $backup" >&2
+    if ! ln "$backup" "$destination" || ! has_exact_digest "$destination" "$old_digest"; then
+      printf '%s\n' "ERROR: refusing to overwrite concurrent $label destination during rollback; preserved for recovery: $transaction_dir" >&2
+      return 1
     fi
+    printf '%s\n' "ROLLBACK: restored known 0.1.1 $label template" >&2
+    return 0
   }
 
-  rollback_signal() {
-    rollback_upgrade
+  rollback_upgrade() {
+    [ "${upgrade_active-0}" -eq 1 ] || return 0
+    # A second termination signal must not interrupt rollback after the active flag is
+    # cleared. Post-commit cleanup has already cleared that flag and remains non-rollback.
+    trap '' HUP INT TERM
+    upgrade_active=0
+    rollback_ok=1
+    recovery_artifact=''
+    [ -z "$sol_private_backup" ] || rollback_role Sol "$sol_destination" "$sol_template" "$sol_old" "$sol_current" "$sol_private_backup" "$sol_rollback_current" || rollback_ok=0
+    [ -z "$terra_private_backup" ] || rollback_role Terra "$terra_destination" "$terra_template" "$terra_old" "$terra_current" "$terra_private_backup" "$terra_rollback_current" || rollback_ok=0
+    if [ "$rollback_ok" -eq 1 ]; then
+      cleanup_transaction || rollback_ok=0
+    elif [ -n "$recovery_artifact" ]; then
+      # A concurrent replacement needs the old guarded copy, but stages and other
+      # exact private artifacts remain ours and are removed before reporting recovery.
+      cleanup_transaction "$recovery_artifact" || true
+    fi
+    if [ "$rollback_ok" -ne 1 ]; then
+      printf '%s\n' "ERROR: upgrade rollback failed closed; private recovery transaction: $transaction_dir" >&2
+      return 1
+    fi
+    return 0
+  }
+
+  upgrade_on_exit() {
+    status=$?
+    [ "${upgrade_exit_handled-0}" -eq 1 ] && return "$status"
+    upgrade_exit_handled=1
+    if [ "${upgrade_active-0}" -eq 1 ]; then
+      rollback_upgrade || true
+    fi
+    return "$status"
+  }
+
+  upgrade_on_signal() {
+    trap '' HUP INT TERM
+    printf '%s\n' "ERROR: upgrade interrupted; attempting guarded rollback" >&2
     exit 1
   }
 
-  trap rollback_upgrade 0
-  trap rollback_signal HUP INT TERM
+  # Install the transaction traps before the first private stage or backup exists.
+  trap upgrade_on_exit 0
+  trap upgrade_on_signal HUP INT TERM
+  transaction_dir=$(mktemp -d "$target_dir/.react-sol-advisor-upgrade-txn.XXXXXX") ||
+    fail "could not create private upgrade transaction"
+  stage_terra=$transaction_dir/terra.stage
+  stage_sol=$transaction_dir/sol.stage
+  terra_private_backup=$transaction_dir/terra.backup
+  sol_private_backup=$transaction_dir/sol.backup
+  terra_displaced=$transaction_dir/terra.displaced
+  sol_displaced=$transaction_dir/sol.displaced
+  terra_rollback_current=$transaction_dir/terra.rollback-current
+  sol_rollback_current=$transaction_dir/sol.rollback-current
 
-  mv "$stage_terra" "$terra_destination" || fail "could not replace Terra known template"
+  cp "$terra_template" "$stage_terra" && has_exact_digest "$stage_terra" "$terra_current" ||
+    fail "could not stage and verify Terra upgrade template"
+  if [ "${RSA_INSTALL_TEST_HOOK-}" = term-after-terra-stage ]; then
+    printf '%s\n' "TEST INJECTION: TERM after Terra stage" >&2
+    kill -TERM "$$"
+  fi
+  cp "$sol_template" "$stage_sol" && has_exact_digest "$stage_sol" "$sol_current" ||
+    fail "could not stage and verify Sol upgrade template"
+
+  if [ "$(classify "$terra_destination" "$terra_template" "$terra_old")" != known-stale-0.1.1 ] ||
+     [ "$(classify "$sol_destination" "$sol_template" "$sol_old")" != known-stale-0.1.1 ]; then
+    fail "known upgrade destinations changed after preflight"
+  fi
+  if [ -e "$luna_destination" ] || [ -L "$luna_destination" ]; then
+    fail "native Luna companion appeared before upgrade mutation: $luna_destination"
+  fi
+
+  if ! ln "$terra_destination" "$terra_private_backup" ||
+     ! has_exact_digest "$terra_private_backup" "$terra_old" ||
+     ! cmp -s "$terra_private_backup" "$terra_destination"; then
+    fail "could not create guarded Terra upgrade backup"
+  fi
+  if [ "${RSA_INSTALL_TEST_HOOK-}" = term-after-terra-backup ]; then
+    printf '%s\n' "TEST INJECTION: TERM after Terra backup" >&2
+    kill -TERM "$$"
+  fi
+  if ! ln "$sol_destination" "$sol_private_backup" ||
+     ! has_exact_digest "$sol_private_backup" "$sol_old" ||
+     ! cmp -s "$sol_private_backup" "$sol_destination"; then
+    fail "could not create guarded Sol upgrade backup"
+  fi
+
+  publish_role() {
+    label=$1
+    destination=$2
+    template=$3
+    old_digest=$4
+    stage=$5
+    displaced=$6
+    backup=$7
+    if [ "$(classify "$destination" "$template" "$old_digest")" != known-stale-0.1.1 ]; then
+      printf '%s\n' "ERROR: known $label destination changed before publication; no overwrite performed" >&2
+      return 1
+    fi
+    if ! mv "$destination" "$displaced"; then
+      printf '%s\n' "ERROR: could not atomically displace known $label destination; private recovery transaction: $transaction_dir" >&2
+      return 1
+    fi
+    if ! has_exact_digest "$displaced" "$old_digest" ||
+       ! has_exact_digest "$backup" "$old_digest" ||
+       ! cmp -s "$displaced" "$backup"; then
+      # Classification is deliberately repeated after the atomic displacement. The
+      # destination may have changed between the pre-publication check and mv; restore
+      # that unknown displaced file only when the destination is still absent, never by
+      # linking the accepted old backup over it.
+      if ! path_exists "$destination"; then
+        if ln "$displaced" "$destination" && cmp -s "$displaced" "$destination"; then
+          rm -f "$displaced" || {
+            printf '%s\n' "ERROR: $label displace revalidation failed; restored unknown destination but preserved private recovery transaction: $transaction_dir" >&2
+            return 1
+          }
+          printf '%s\n' "ERROR: $label displace revalidation failed; restored unknown destination without overwrite; private recovery transaction: $transaction_dir" >&2
+          return 1
+        fi
+      fi
+      printf '%s\n' "ERROR: $label displace revalidation failed; concurrent destination present; preserved private recovery transaction: $transaction_dir" >&2
+      return 1
+    fi
+    if ! ln "$stage" "$destination" || [ "$(classify "$destination" "$template" "$old_digest")" != current ]; then
+      printf '%s\n' "ERROR: concurrent $label destination appeared; no overwrite performed; private recovery transaction: $transaction_dir" >&2
+      return 1
+    fi
+    return 0
+  }
+
+  publish_role Terra "$terra_destination" "$terra_template" "$terra_old" "$stage_terra" "$terra_displaced" "$terra_private_backup" ||
+    fail "could not publish Terra upgrade"
   if [ "${RSA_INSTALL_TEST_FAIL_REPLACE-}" = sol ]; then
     printf '%s\n' "TEST INJECTION: forced replacement failure for Sol" >&2
     exit 1
   fi
-  mv "$stage_sol" "$sol_destination" || fail "could not replace Sol known template"
+  publish_role Sol "$sol_destination" "$sol_template" "$sol_old" "$stage_sol" "$sol_displaced" "$sol_private_backup" ||
+    fail "could not publish Sol upgrade"
 
   if [ "$(classify "$terra_destination" "$terra_template" "$terra_old")" != current ] ||
      [ "$(classify "$sol_destination" "$sol_template" "$sol_old")" != current ]; then
@@ -391,18 +490,13 @@ if [ "$upgrade_known" -eq 1 ]; then
     fail "native Luna companion appeared during upgrade: $luna_destination"
   fi
 
-  # Both current roles and Luna absence are now committed as a pair. Disable rollback
-  # before backup cleanup: a later cleanup failure must preserve current/current rather
-  # than restoring only whichever old backup remains. Signals during cleanup therefore
-  # cannot create a mixed role pair either.
+  # Current/current plus Luna absence is the commit point. A later cleanup failure
+  # deliberately preserves that committed pair and private recovery evidence.
   upgrade_active=0
-  trap - 0 HUP INT TERM
-
-  # A changed backup is preserved for recovery and cannot be moved over a destination.
-  if ! remove_verified_backup Sol "$sol_backup" "$sol_old" ||
-     ! remove_verified_backup Terra "$terra_backup" "$terra_old"; then
-    fail "could not remove guarded upgrade backups"
+  if ! cleanup_transaction; then
+    fail "could not clean committed private upgrade transaction"
   fi
+  trap - 0 HUP INT TERM
   printf '%s\n' "UPGRADED KNOWN 0.1.1: $terra_destination"
   printf '%s\n' "UPGRADED KNOWN 0.1.1: $sol_destination"
   exit 0

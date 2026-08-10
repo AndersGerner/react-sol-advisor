@@ -273,6 +273,26 @@ require(
     "no-silent-fallback remains explicit across authoritative routing contracts",
 )
 
+terra_prompt_match = re.search(
+    r"## Terra / High - sole native implementation lane[\s\S]*?Prompt:\s*(?:```|~~~)text([\s\S]*?)(?:```|~~~)",
+    roles,
+)
+terra_prompt = terra_prompt_match.group(1) if terra_prompt_match else ""
+require(
+    includes_all(
+        roles,
+        "Select conditional specialist profiles from the canonical",
+        "parent includes its authoritative route decision",
+    )
+    and bool(re.search(
+        r"Load only the parent-selected\s+profiles named in `?DELIVERY PROFILES`?;\s*do not select/change profiles,\s*architecture, or routing",
+        terra_prompt,
+        flags=re.IGNORECASE,
+    ))
+    and not re.search(r"Select and load|select(?:ion)? of .*profiles", terra_prompt, flags=re.IGNORECASE),
+    "parent retains canonical profile selection while the Terra child prompt forbids profile-selection authority",
+)
+
 # Generalization must preserve the accepted economics rather than making any policy
 # cheaper or collapsing the risk matrix into generic prose.
 require(

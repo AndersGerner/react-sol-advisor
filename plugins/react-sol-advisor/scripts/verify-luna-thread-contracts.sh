@@ -579,7 +579,7 @@ require(
 protected_hashes = {
     "plugins/react-sol-advisor/agents/react-sol-advisor-terra-implementer.toml": "31ccc37af13e7a578436ec000d1867eaa0b638f8a1960e8261cc31a9fb77c9c8",
     "plugins/react-sol-advisor/agents/react-sol-advisor-sol-reviewer.toml": "968f44ec684abe3b89f2ef6c974d0d1a259043c32022caced93df8e553fa0788",
-    "plugins/react-sol-advisor/scripts/install-agents.sh": "60591ff888f71d3b9739c341d6be5125ce4643130678483788ab648ef8920717",
+    "plugins/react-sol-advisor/scripts/install-agents.sh": "8188b413338d710c0e9eba5ad0bda504deb5c481c85be802c6057157dcec90de",
     "plugins/react-sol-advisor/scripts/inspect-agent-runtime.sh": "a186adfe471afa6b98000c6f5cd00185a6fdeb6abd575e32ddfd02a85b5d65a5",
 }
 for relative, expected in protected_hashes.items():
