@@ -623,6 +623,81 @@ else
   record_failure "clean current/current retry failed after interruption"
 fi
 
+# Once stale roles have both been published as current, committed cleanup must also be
+# signal-safe. Pause its first private stage removal only after both destination files
+# are current, interrupt the parent, then release the verifier-owned wrapper.
+committed_cleanup_target=$tmp_dir/committed-cleanup-signal
+prepare_stale_pair "$committed_cleanup_target" || record_failure "could not prepare committed cleanup fixture"
+add_upstream_sentinels "$committed_cleanup_target" || record_failure "could not prepare committed cleanup sentinels"
+printf '%s\n' "user-owned committed cleanup sentinel" > "$committed_cleanup_target/user-owned-sentinel" ||
+  record_failure "could not prepare committed cleanup user sentinel"
+committed_cleanup_upstream_before=$(role_and_upstream_signature "$committed_cleanup_target" | sed -n '3,4p')
+committed_cleanup_control=$tmp_dir/committed-cleanup-control
+committed_cleanup_bin=$tmp_dir/committed-cleanup-bin
+mkdir "$committed_cleanup_control" "$committed_cleanup_bin" || record_failure "could not prepare committed cleanup controls"
+real_rm_for_committed_cleanup=$(command -v rm) || record_failure "could not resolve system rm for committed cleanup"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'for argument in "$@"; do' \
+  '  case "$argument" in' \
+  '    */terra.stage)' \
+  '      if [ ! -e "$RSA_TEST_CONTROL/a-at-committed-cleanup" ] &&' \
+  '         cmp -s "$RSA_TEST_TERRA_CURRENT" "$RSA_TEST_TERRA_DEST" &&' \
+  '         cmp -s "$RSA_TEST_SOL_CURRENT" "$RSA_TEST_SOL_DEST"; then' \
+  '        : > "$RSA_TEST_CONTROL/a-at-committed-cleanup"' \
+  '        while [ ! -e "$RSA_TEST_CONTROL/release-a-committed-cleanup" ]; do sleep 0.05; done' \
+  '      fi' \
+  '      ;;' \
+  '  esac' \
+  'done' \
+  'exec "$RSA_TEST_REAL_RM" "$@"' > "$committed_cleanup_bin/rm" ||
+  record_failure "could not create committed cleanup rm wrapper"
+chmod 755 "$committed_cleanup_bin/rm" || record_failure "could not make committed cleanup rm wrapper executable"
+committed_cleanup_output=$committed_cleanup_control/a.out
+RSA_TEST_CONTROL="$committed_cleanup_control" RSA_TEST_REAL_RM="$real_rm_for_committed_cleanup" \
+RSA_TEST_TERRA_DEST="$committed_cleanup_target/$terra_file" RSA_TEST_SOL_DEST="$committed_cleanup_target/$sol_file" \
+RSA_TEST_TERRA_CURRENT="$terra_current" RSA_TEST_SOL_CURRENT="$sol_current" PATH="$committed_cleanup_bin:$PATH" \
+sh "$installer" --target-dir "$committed_cleanup_target" --upgrade-known >"$committed_cleanup_output" 2>&1 &
+committed_cleanup_pid=$!
+if wait_for_path "$committed_cleanup_control/a-at-committed-cleanup" "stale-to-current committed cleanup pause"; then
+  kill -TERM "$committed_cleanup_pid" 2>/dev/null || true
+  : > "$committed_cleanup_control/release-a-committed-cleanup"
+  if wait "$committed_cleanup_pid"; then committed_cleanup_status=0; else committed_cleanup_status=$?; fi
+  if [ "$committed_cleanup_status" -eq 0 ]; then
+    record_failure "interrupted committed cleanup was accepted"
+  elif grep -Fq "UPGRADED KNOWN 0.1.1" "$committed_cleanup_output"; then
+    record_failure "interrupted committed cleanup printed success"
+  elif ! grep -Fq "upgrade interrupted; attempting guarded rollback" "$committed_cleanup_output"; then
+    record_failure "interrupted committed cleanup omitted guarded interruption marker"
+  elif ! cmp -s "$terra_current" "$committed_cleanup_target/$terra_file" ||
+       ! cmp -s "$sol_current" "$committed_cleanup_target/$sol_file" ||
+       [ "$(cat "$committed_cleanup_target/user-owned-sentinel" 2>/dev/null)" != "user-owned committed cleanup sentinel" ] ||
+       [ "$(role_and_upstream_signature "$committed_cleanup_target" | sed -n '3,4p')" != "$committed_cleanup_upstream_before" ]; then
+    record_failure "interrupted committed cleanup changed current roles or unrelated bytes"
+  elif [ -e "$committed_cleanup_target/.react-sol-advisor-upgrade-lock" ] || [ -L "$committed_cleanup_target/.react-sol-advisor-upgrade-lock" ] ||
+       find "$committed_cleanup_target" -maxdepth 1 -type d -name '.react-sol-advisor-upgrade-txn.*' -print -quit | grep -q .; then
+    record_failure "interrupted committed cleanup stranded owned lock or transaction artifacts"
+  else
+    committed_cleanup_before_retry=$(target_signature "$committed_cleanup_target")
+    if committed_cleanup_retry=$(sh "$installer" --target-dir "$committed_cleanup_target" --upgrade-known 2>&1); then
+      if ! printf '%s\n' "$committed_cleanup_retry" | grep -Fq "ALREADY CURRENT" ||
+         [ "$(target_signature "$committed_cleanup_target")" != "$committed_cleanup_before_retry" ]; then
+        record_failure "clean current/current retry was not idempotent after committed cleanup interruption"
+      else
+        pass "interrupted committed cleanup preserves current roles and releases owned state"
+        assert_no_upgrade_artifacts "committed cleanup retry" "$committed_cleanup_target"
+      fi
+    else
+      record_failure "clean current/current retry failed after committed cleanup interruption"
+    fi
+  fi
+else
+  record_failure "timed out waiting for stale-to-current committed cleanup pause"
+  kill -TERM "$committed_cleanup_pid" 2>/dev/null || true
+  : > "$committed_cleanup_control/release-a-committed-cleanup"
+  wait "$committed_cleanup_pid" 2>/dev/null || true
+fi
+
 # Two installers may both finish initial preflight and enter verifier-controlled staging,
 # but exactly one may own destination mutation. Process A is paused after it acquires the
 # target lock (or, in an unsafe implementation, after its first backup); process B then

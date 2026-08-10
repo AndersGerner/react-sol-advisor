@@ -696,11 +696,15 @@ if [ "$upgrade_known" -eq 1 ]; then
   fi
 
   # Current/current plus Luna absence is the commit point. A later cleanup failure
-  # deliberately preserves that committed pair and private recovery evidence.
+  # deliberately preserves that committed pair and private recovery evidence. Defer
+  # signals across the commit transition and owned cleanup so an interruption cannot
+  # strand the private transaction or target lock after roles are committed.
+  begin_signal_safe_transition
   upgrade_active=0
   committed_cleanup_ok=1
   cleanup_transaction || committed_cleanup_ok=0
   release_upgrade_lock || committed_cleanup_ok=0
+  end_signal_safe_transition
   if [ "$committed_cleanup_ok" -ne 1 ]; then
     fail "could not clean committed private upgrade transaction"
   fi
