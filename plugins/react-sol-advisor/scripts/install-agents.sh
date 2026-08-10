@@ -391,14 +391,18 @@ if [ "$upgrade_known" -eq 1 ]; then
     fail "native Luna companion appeared during upgrade: $luna_destination"
   fi
 
-  # Do not clear upgrade_active until both guarded backups are verified and gone. A
-  # changed backup is preserved for recovery and cannot be moved over a destination.
+  # Both current roles and Luna absence are now committed as a pair. Disable rollback
+  # before backup cleanup: a later cleanup failure must preserve current/current rather
+  # than restoring only whichever old backup remains. Signals during cleanup therefore
+  # cannot create a mixed role pair either.
+  upgrade_active=0
+  trap - 0 HUP INT TERM
+
+  # A changed backup is preserved for recovery and cannot be moved over a destination.
   if ! remove_verified_backup Sol "$sol_backup" "$sol_old" ||
      ! remove_verified_backup Terra "$terra_backup" "$terra_old"; then
     fail "could not remove guarded upgrade backups"
   fi
-  upgrade_active=0
-  trap - 0 HUP INT TERM
   printf '%s\n' "UPGRADED KNOWN 0.1.1: $terra_destination"
   printf '%s\n' "UPGRADED KNOWN 0.1.1: $sol_destination"
   exit 0

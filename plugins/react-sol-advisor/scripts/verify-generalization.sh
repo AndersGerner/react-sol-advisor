@@ -273,6 +273,63 @@ require(
     "no-silent-fallback remains explicit across authoritative routing contracts",
 )
 
+# Generalization must preserve the accepted economics rather than making any policy
+# cheaper or collapsing the risk matrix into generic prose.
+require(
+    includes_all(
+        routing,
+        "Classify green only when", "all", "observable acceptance criteria",
+        "established architecture", "canonical pattern", "State and data ownership are clear",
+        "bounded file/module set", "Relevant tests", "local and reversible",
+        "No unresolved product, architecture, data-consistency, or security decision",
+        "No red trigger applies",
+    ),
+    "routing preserves the all-true green criteria: acceptance, canonical architecture, ownership, bounded scope, tests, reversible blast radius, no unresolved decision, and no red trigger",
+)
+require(
+    includes_all(
+        routing,
+        "Non-local concurrency", "transaction/locking", "Async races", "cancellation",
+        "stale responses", "Queues, retries, leases, reconciliation", "provider state machines",
+        "Cross-package behavior", "broad reversible", "production bug whose cause is not localized",
+        "React Server Component/client", "Hydration, streaming, Suspense", "caching, revalidation",
+        "React Native", "accessibility focus", "Competing repository patterns",
+    ),
+    "routing preserves generalized and React-specific amber triggers",
+)
+require(
+    includes_all(
+        routing,
+        "Authentication, authorization, security policy, secrets, or tenant isolation",
+        "Database schema, migration, destructive data operation", "Public API, shared package contract",
+        "Billing, financial calculations", "Irreversible operation", "Framework-wide upgrade",
+        "Incident response with unclear root cause", "Unresolved consistency or ownership policy",
+        "Native module", "New cross-application domain model", "conflicts with repository architecture or safety policy",
+    ),
+    "routing preserves generalized red triggers for security, data, contracts, irreversible work, incidents, native boundaries, and safety conflicts",
+)
+require(
+    includes_all(
+        routing,
+        "| Green | Luna / Max app task; parent Sol verifies and accepts |",
+        "| Amber | Sol decomposes into green Luna units", "| Red | Sol settles architecture; Terra / High implements; fresh Sol reviewer required |",
+        "### Balanced", "| Green | Luna / Max app task |", "| Amber | Terra / High by default, or Luna for explicitly bounded subparts |",
+        "| Red | Terra / High plus fresh Sol reviewer |", "### Critical",
+        "| Green | Terra / High plus fresh Sol reviewer required", "| Amber | Terra / High plus fresh Sol reviewer required |",
+        "| Red | Sol architecture, Terra / High implementation, mandatory fresh Sol reviewer |",
+    ),
+    "routing preserves the accepted economy, balanced, and critical green/amber/red mapping",
+)
+require(
+    includes_all(
+        routing,
+        "**Red** work in any policy", "**Critical** work by definition",
+        "**Amber** work in `balanced` or irreducible `economy` core", "consequential existing boundaries",
+        "Routine green or non-consequential amber Terra work", "Do not spawn a fresh Sol reviewer",
+    ),
+    "fresh Sol review remains limited to red, critical, and consequential amber boundaries rather than becoming cheaper",
+)
+
 # 15. Native role identity and reviewer isolation are stable implementation interfaces.
 agents_dir = repo / "plugins/react-sol-advisor/agents"
 expected_roles = {
@@ -341,7 +398,7 @@ origin_main = subprocess.run(
 ).returncode == 0
 if origin_main:
     changed = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main", "--", "plugins/sol-advisor"],
+        ["git", "diff", "--name-only", "origin/main...HEAD", "--", "plugins/sol-advisor"],
         cwd=repo,
         check=False,
         text=True,

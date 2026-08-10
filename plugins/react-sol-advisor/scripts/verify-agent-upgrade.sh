@@ -255,6 +255,49 @@ else
   record_failure "--upgrade-known rejected the exact accepted 0.1.1 role pair"
 fi
 
+# After both replacements pass exact-current and Luna checks, backup cleanup is no
+# longer a role-pair transaction. Simulate a failure removing the Terra backup after
+# the Sol backup has been removed: both destinations must remain current/current, the
+# old Terra recovery artifact must survive, and no EXIT rollback may create a mixed pair.
+cleanup_target=$tmp_dir/backup-cleanup-failure
+prepare_stale_pair "$cleanup_target" || record_failure "could not prepare cleanup failure fixture"
+add_upstream_sentinels "$cleanup_target" || record_failure "could not prepare cleanup failure sentinels"
+cleanup_upstream_before=$(role_and_upstream_signature "$cleanup_target" | sed -n '3,4p')
+fake_rm_bin=$tmp_dir/fake-rm-bin
+mkdir "$fake_rm_bin" || record_failure "could not prepare fake rm directory"
+real_rm=$(command -v rm) || record_failure "could not resolve system rm"
+fake_rm=$fake_rm_bin/rm
+printf '%s\n' \
+  '#!/bin/sh' \
+  'for argument in "$@"; do' \
+  '  case "$argument" in' \
+  '    */.react-sol-advisor-upgrade-terra.backup)' \
+  '      exit 1' \
+  '      ;;' \
+  '  esac' \
+  'done' \
+  'exec "$RSA_TEST_REAL_RM" "$@"' > "$fake_rm" || record_failure "could not create fake rm wrapper"
+chmod 755 "$fake_rm" || record_failure "could not make fake rm wrapper executable"
+if cleanup_output=$(RSA_TEST_REAL_RM="$real_rm" PATH="$fake_rm_bin:$PATH" sh "$installer" --target-dir "$cleanup_target" --upgrade-known 2>&1); then
+  record_failure "guarded backup cleanup failure was accepted"
+elif ! printf '%s\n' "$cleanup_output" | grep -Fq "could not remove guarded upgrade backups"; then
+  record_failure "guarded backup cleanup failure omitted exact cleanup marker"
+elif ! cmp -s "$terra_current" "$cleanup_target/$terra_file" || ! cmp -s "$sol_current" "$cleanup_target/$sol_file"; then
+  record_failure "guarded backup cleanup failure produced a mixed or stale role pair"
+elif [ -e "$cleanup_target/$luna_file" ] || [ -L "$cleanup_target/$luna_file" ]; then
+  record_failure "guarded backup cleanup failure created a native Luna role"
+elif [ "$(role_and_upstream_signature "$cleanup_target" | sed -n '3,4p')" != "$cleanup_upstream_before" ]; then
+  record_failure "guarded backup cleanup failure changed an upstream sentinel"
+elif ! cmp -s "$terra_fixture" "$cleanup_target/.react-sol-advisor-upgrade-terra.backup"; then
+  record_failure "guarded backup cleanup failure did not preserve the old Terra recovery artifact"
+elif [ -e "$cleanup_target/.react-sol-advisor-upgrade-sol.backup" ] || [ -L "$cleanup_target/.react-sol-advisor-upgrade-sol.backup" ]; then
+  record_failure "guarded backup cleanup failure did not remove the verified Sol backup first"
+elif stage_paths=$(find "$cleanup_target" -maxdepth 1 -type f -name '.react-sol-advisor-upgrade-*' ! -name '*.backup' -print) && [ -n "$stage_paths" ]; then
+  record_failure "guarded backup cleanup failure left staged upgrade files: $stage_paths"
+else
+  pass "guarded backup cleanup failure preserves current/current and old recovery state"
+fi
+
 # Unknown and unsafe states are all preflight failures. Every case begins with a known
 # pair so a failure cannot hide a partial replacement behind an unrelated missing file.
 modified_target=$tmp_dir/unknown-modified
