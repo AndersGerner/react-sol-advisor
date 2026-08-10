@@ -1,9 +1,9 @@
 ---
 name: orchestration
-description: "React Sol Advisor Luna-first orchestration: green economy work routes to GPT-5.6 Luna / Max app tasks; amber/red or balanced/critical work escalates to Terra / High; fresh Sol review at commitment boundaries; no silent lane fallback."
+description: "Sol Development Advisor Luna-first orchestration: green economy work routes to GPT-5.6 Luna / Max app tasks; amber/red or balanced/critical work escalates to Terra / High; fresh Sol review at commitment boundaries; no silent lane fallback."
 ---
 
-# React Sol Advisor Orchestration
+# Sol Development Advisor Orchestration
 
 Act as the architect in the primary Codex session. Own the user's intent, routing
 decision, architecture, decomposition, complete task specification, parent
@@ -12,14 +12,18 @@ risk is the result of the classification in
 [references/model-routing.md](references/model-routing.md). The primary session never
 hands off architecture or acceptance to a child lane.
 
-The parent must emit a `ROUTING DECISION` block before every delegation. It is the
-single source of truth for the chosen policy, risk, lane, ownership, quality
-contract, escalation triggers, and PR policy.
+The parent must emit the route-decision block before every delegation. It is the
+single source of truth for the chosen policy, risk, lane, ownership, delivery profiles,
+escalation triggers, and PR policy.
 
 Read [references/role-contracts.md](references/role-contracts.md) before the first
 native delegation. Read [references/model-routing.md](references/model-routing.md)
 before the first classification. Read
 [references/luna-task-lane.md](references/luna-task-lane.md) before any Luna task.
+Read the canonical [delivery profile selection matrix](references/delivery-profiles.md)
+before selecting implementation requirements. Historical `QUALITY CONTRACT` blocks
+remain backward-compatible input and records, but new authoritative route decisions use
+`DELIVERY PROFILES`.
 
 ## Confirm the primary session
 
@@ -42,8 +46,8 @@ REASONS:
 - concise evidence-based reason
 OWNERSHIP:
 - exact files/modules or bounded responsibility
-QUALITY CONTRACT:
-- selected React/platform references
+DELIVERY PROFILES:
+- production-delivery plus conditional selected profiles
 ESCALATION TRIGGERS:
 - exact conditions that stop or change the lane
 PR POLICY: none | commit-only | draft-after-acceptance
@@ -57,17 +61,19 @@ The `LANE` field must be one of:
 - `decomposed-mixed` — Sol decomposes the task; green subparts go to Luna and the
   irreducible core goes to Terra.
 
-## React production-delivery contract
+## Delivery profile contract
 
-All React, Next.js, React Native, Expo, and TypeScript implementation work must carry the
-[react-production-delivery](../react-production-delivery/SKILL.md) contract. The Luna
-packet or Terra specification must either load the skill with a guaranteed invocation
-or include the core rules inline. The contract is non-negotiable: a delegated React
-task cannot omit it.
+Every implementation packet must carry the mandatory
+[production-delivery](../production-delivery/SKILL.md) contract. Select specialist
+profiles only from owned paths and observable acceptance criteria through the canonical
+[delivery-profiles.md](references/delivery-profiles.md) matrix; profiles may combine.
+React is conditional on an eligible owned React/UI slice. Absence of React never blocks
+TypeScript backend, data, worker, or integration work.
 
-Load the Next.js, React Native/Expo, and testing/accessibility references conditionally
-based on the task. Do not apply generic framework advice without checking installed
-versions.
+The Luna packet or Terra specification must name the generic contract and every selected
+profile, with exact ownership and exclusions. Load the Next.js, React Native/Expo, and
+testing/accessibility references only when the selected React profile requires them.
+Do not apply generic framework advice without checking installed versions.
 
 ## Classify risk and choose a policy
 
@@ -90,8 +96,8 @@ to Terra when clean ownership boundaries exist.
 
 If the chosen lane is unavailable, do not silently switch to a cheaper or different
 lane. Report the missing capability, preserve the intended route in the report, state
-the exact alternative and its cost/risk implication, and require explicit user
-authorization before switching to a more expensive lane.
+the exact alternative and its cost/risk implication, and require explicit user authorization
+before switching to a more expensive lane.
 
 ## Preflight the native companion custom agents
 

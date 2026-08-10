@@ -74,6 +74,7 @@ verify_path = "plugins/react-sol-advisor/scripts/verify.sh"
 contracts_path = "plugins/react-sol-advisor/scripts/verify-contracts.sh"
 invocations_path = "plugins/react-sol-advisor/examples/invocations.md"
 packet_path = "plugins/react-sol-advisor/examples/luna-task-packet.md"
+profiles_path = "plugins/react-sol-advisor/skills/orchestration/references/delivery-profiles.md"
 evidence_path = "docs/acceptance/2026-08-08-luna-read-thread-fallback.md"
 
 skill = read(skill_path)
@@ -89,6 +90,7 @@ verify = read(verify_path)
 contracts = read(contracts_path)
 invocations = read(invocations_path)
 packet = read(packet_path)
+profiles = read(profiles_path)
 
 # 1. wait_threads is preferred when usable, not a hard dependency.
 require(
@@ -483,6 +485,34 @@ require(
         "HostId",
         "Child worktree",
         "Latest completed turn ID",
+    ),
+)
+
+# Delivery selection is generic and packet-specific. The mandatory core applies to every
+# Luna implementation packet; specialist profiles are selected by owned paths and
+# acceptance, so a non-React packet cannot be rejected for lacking a React slice.
+require(
+    "Luna packets require generic production delivery with conditional profiles, not mandatory React",
+    has_all(
+        lane,
+        "production-delivery",
+        "selected profiles",
+        "owned paths",
+        "acceptance",
+        "absence of React never blocks non-React work",
+    )
+    and has_all(
+        packet,
+        "production-delivery",
+        "delivery-profiles.md",
+        "selected",
+        "absence of React",
+    )
+    and has_all(
+        profiles,
+        "production-delivery",
+        "always",
+        "TypeScript is not auto-React",
     ),
 )
 
