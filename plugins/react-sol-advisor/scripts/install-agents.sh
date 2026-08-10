@@ -250,12 +250,6 @@ if [ "$upgrade_known" -eq 1 ]; then
   path_exists "$sol_backup" && fail "refusing existing upgrade backup: $sol_backup"
 fi
 
-if [ "$upgrade_known" -eq 1 ] && [ "$terra_state/$sol_state" = current/current ]; then
-  printf '%s\n' "ALREADY CURRENT: $terra_destination"
-  printf '%s\n' "ALREADY CURRENT: $sol_destination"
-  exit 0
-fi
-
 if [ "$upgrade_known" -eq 1 ]; then
   # All mutable upgrade artifacts live in a unique private directory beneath the exact
   # target.  Nothing is written to a public recovery filename: pre-existing legacy
@@ -545,13 +539,34 @@ if [ "$upgrade_known" -eq 1 ]; then
   acquire_upgrade_lock || fail "upgrade lock is already held; no destination mutation performed"
   owns_upgrade_lock || fail "upgrade lock ownership could not be verified before destination classification"
 
-  if [ "$(classify "$terra_destination" "$terra_template" "$terra_old")" != known-stale-0.1.1 ] ||
-     [ "$(classify "$sol_destination" "$sol_template" "$sol_old")" != known-stale-0.1.1 ]; then
-    fail "known upgrade destinations changed after preflight"
-  fi
+  locked_terra_state=$(classify "$terra_destination" "$terra_template" "$terra_old")
+  locked_sol_state=$(classify "$sol_destination" "$sol_template" "$sol_old")
   if [ -e "$luna_destination" ] || [ -L "$luna_destination" ]; then
     fail "native Luna companion appeared before upgrade mutation: $luna_destination"
   fi
+  case "$locked_terra_state/$locked_sol_state" in
+    current/current)
+      # Idempotence is authorized only after this transaction owns the target-local
+      # lock and has reclassified both roles plus Luna absence. Remove private staging
+      # and release the lock before exposing the successful no-op result.
+      upgrade_active=0
+      current_cleanup_ok=1
+      cleanup_transaction || current_cleanup_ok=0
+      release_upgrade_lock || current_cleanup_ok=0
+      if [ "$current_cleanup_ok" -ne 1 ]; then
+        fail "could not clean current known upgrade transaction"
+      fi
+      trap - 0 HUP INT TERM
+      printf '%s\n' "ALREADY CURRENT: $terra_destination"
+      printf '%s\n' "ALREADY CURRENT: $sol_destination"
+      exit 0
+      ;;
+    known-stale-0.1.1/known-stale-0.1.1)
+      ;;
+    *)
+      fail "known upgrade destinations changed after preflight"
+      ;;
+  esac
 
   if ! ln "$terra_destination" "$terra_private_backup" ||
      ! has_exact_digest "$terra_private_backup" "$terra_old" ||

@@ -495,6 +495,64 @@ else
   pass "pre-existing unknown upgrade lock is preserved without role mutation"
 fi
 
+# Current/current is an authorization decision, not an unlocked shortcut. Pause process
+# A after Sol is published while it still owns the target lock; process B must refuse
+# the held lock rather than printing ALREADY CURRENT. Terminating A then proves its
+# still-active transaction rolls back exact old/old without touching unrelated bytes.
+current_lock_target=$tmp_dir/current-current-held-lock
+prepare_stale_pair "$current_lock_target" || record_failure "could not prepare current/current held-lock fixture"
+add_upstream_sentinels "$current_lock_target" || record_failure "could not prepare current/current held-lock sentinels"
+printf '%s\n' "user-owned held-lock sentinel" > "$current_lock_target/user-owned-sentinel" ||
+  record_failure "could not prepare current/current user-owned sentinel"
+current_lock_before=$(target_signature "$current_lock_target")
+current_lock_control=$tmp_dir/current-current-held-lock-control
+current_lock_bin=$tmp_dir/current-current-held-lock-bin
+mkdir "$current_lock_control" "$current_lock_bin" || record_failure "could not prepare current/current held-lock controls"
+real_python3=$(command -v python3) || record_failure "could not resolve system python3"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'if [ "$1" = - ] && [ "$2" = "$RSA_TEST_SOL_DEST" ] && [ ! -e "$RSA_TEST_CONTROL/a-current-before-commit" ] &&' \
+  '   cmp -s "$RSA_TEST_TERRA_CURRENT" "$RSA_TEST_TERRA_DEST" && cmp -s "$RSA_TEST_SOL_CURRENT" "$RSA_TEST_SOL_DEST"; then' \
+  '  : > "$RSA_TEST_CONTROL/a-current-before-commit"' \
+  '  while [ ! -e "$RSA_TEST_CONTROL/release-a-current-before-commit" ]; do sleep 0.05; done' \
+  'fi' \
+  'exec "$RSA_TEST_REAL_PYTHON3" "$@"' > "$current_lock_bin/python3" ||
+  record_failure "could not create current/current held-lock python wrapper"
+chmod 755 "$current_lock_bin/python3" || record_failure "could not make current/current python wrapper executable"
+current_lock_a_output=$current_lock_control/a.out
+RSA_TEST_CONTROL="$current_lock_control" RSA_TEST_REAL_PYTHON3="$real_python3" \
+RSA_TEST_TERRA_DEST="$current_lock_target/$terra_file" RSA_TEST_SOL_DEST="$current_lock_target/$sol_file" \
+RSA_TEST_TERRA_CURRENT="$terra_current" RSA_TEST_SOL_CURRENT="$sol_current" PATH="$current_lock_bin:$PATH" \
+sh "$installer" --target-dir "$current_lock_target" --upgrade-known >"$current_lock_a_output" 2>&1 &
+current_lock_a_pid=$!
+wait_for_path "$current_lock_control/a-current-before-commit" "current/current process A post-Sol publication" || true
+if current_lock_b_output=$(sh "$installer" --target-dir "$current_lock_target" --upgrade-known 2>&1); then
+  current_lock_b_status=0
+else
+  current_lock_b_status=$?
+fi
+kill -TERM "$current_lock_a_pid" 2>/dev/null || true
+: > "$current_lock_control/release-a-current-before-commit"
+if wait "$current_lock_a_pid"; then current_lock_a_status=0; else current_lock_a_status=$?; fi
+if [ "$current_lock_b_status" -eq 0 ]; then
+  record_failure "held-lock current/current process B was accepted"
+elif printf '%s\n' "$current_lock_b_output" | grep -Fq "ALREADY CURRENT"; then
+  record_failure "held-lock current/current process B printed ALREADY CURRENT"
+elif ! printf '%s\n' "$current_lock_b_output" | grep -Fq "upgrade lock is already held"; then
+  record_failure "held-lock current/current process B omitted exact lock refusal marker"
+elif printf '%s\n' "$current_lock_b_output" | grep -Fq "ROLLBACK:"; then
+  record_failure "held-lock current/current process B rolled back A's transaction"
+elif [ "$current_lock_a_status" -eq 0 ] || ! printf '%s\n' "$(cat "$current_lock_a_output")" | grep -Fq "ROLLBACK: restored known 0.1.1"; then
+  record_failure "terminated current/current process A did not perform guarded rollback"
+elif ! cmp -s "$terra_fixture" "$current_lock_target/$terra_file" ||
+     ! cmp -s "$sol_fixture" "$current_lock_target/$sol_file" ||
+     [ "$(target_signature "$current_lock_target")" != "$current_lock_before" ]; then
+  record_failure "terminated current/current process A did not restore exact old/old and unrelated bytes"
+else
+  pass "current/current authorization is serialized by the target lock and interrupted owner rolls back old/old"
+  assert_no_upgrade_artifacts "current/current held-lock interruption" "$current_lock_target"
+fi
+
 # Two installers may both finish initial preflight and enter verifier-controlled staging,
 # but exactly one may own destination mutation. Process A is paused after it acquires the
 # target lock (or, in an unsafe implementation, after its first backup); process B then

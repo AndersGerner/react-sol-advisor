@@ -89,23 +89,17 @@ def parse_routing_truth_table(value: str) -> dict[str, object]:
 
 
 def routing_truth_errors(table: dict[str, object]) -> list[str]:
-    raw_cases = table.get("cases")
-    if not isinstance(raw_cases, list):
-        return ["routing truth table has no cases list"]
-    cases = {
-        case.get("id"): case
-        for case in raw_cases
-        if isinstance(case, dict) and isinstance(case.get("id"), str)
-    }
-    expected: dict[str, dict[str, object]] = {
-        "pure-typescript-mapper": {
+    expected_cases: tuple[dict[str, object], ...] = (
+        {
+            "id": "pure-typescript-mapper",
             "policy": "economy",
             "risk": "green",
             "lane": "luna-app-task",
             "profiles": ["production-delivery", "typescript-backend-delivery"],
             "fresh_sol_review_required": False,
         },
-        "pg-boss-ownership-reconciliation": {
+        {
+            "id": "pg-boss-ownership-reconciliation",
             "policy": "economy",
             "risk": "amber",
             "lane": "decomposed-mixed",
@@ -114,13 +108,16 @@ def routing_truth_errors(table: dict[str, object]) -> list[str]:
             "luna_owns": "independently-green helpers, fixtures, tests, or docs only",
             "fresh_sol_review_required": False,
         },
-        "schema-migration": {
+        {
+            "id": "schema-migration",
+            "policy": "balanced",
             "risk": "red",
             "lane": "terra-native",
             "profiles": ["production-delivery", "postgres-data-delivery"],
             "fresh_sol_review_required": True,
         },
-        "legacy-react-url-filter": {
+        {
+            "id": "legacy-react-url-filter",
             "policy": "economy",
             "risk": "green",
             "lane": "luna-app-task",
@@ -128,39 +125,82 @@ def routing_truth_errors(table: dict[str, object]) -> list[str]:
             "invocation": "@react-sol-advisor",
             "fresh_sol_review_required": False,
         },
-        "critical-mechanical-luna": {
+        {
+            "id": "critical-mechanical-luna",
             "policy": "critical",
             "risk": "green",
             "lane": "luna-app-task",
+            "profiles": ["production-delivery"],
             "fresh_sol_review_required": True,
         },
-        "bounded-queue-lease-transition": {
+        {
+            "id": "bounded-queue-lease-transition",
+            "policy": "balanced",
             "risk": "amber",
             "lane": "terra-native",
+            "profiles": ["production-delivery", "worker-integration-delivery"],
+            "fresh_sol_review_required": False,
         },
-        "bounded-orphan-reconciliation-state-machine": {
+        {
+            "id": "bounded-orphan-reconciliation-state-machine",
+            "policy": "balanced",
             "risk": "amber",
             "lane": "terra-native",
+            "profiles": ["production-delivery", "worker-integration-delivery"],
+            "fresh_sol_review_required": False,
         },
-        "bounded-unsettled-stale-response-race": {
+        {
+            "id": "bounded-unsettled-stale-response-race",
+            "policy": "balanced",
             "risk": "amber",
             "lane": "terra-native",
+            "profiles": ["production-delivery", "worker-integration-delivery"],
+            "fresh_sol_review_required": False,
         },
-    }
+    )
     found: list[str] = []
-    for case_id, fields in expected.items():
-        actual = cases.get(case_id)
-        if not isinstance(actual, dict):
-            found.append(f"missing routing case: {case_id}")
+    if set(table) != {"version", "cases"}:
+        found.append(f"routing truth table fields are {sorted(table)}, expected ['cases', 'version']")
+    if table.get("version") != 1:
+        found.append(f"routing truth table version is {table.get('version')!r}, expected 1")
+    raw_cases = table.get("cases")
+    if not isinstance(raw_cases, list):
+        return [*found, "routing truth table has no cases list"]
+
+    expected_by_id = {case["id"]: case for case in expected_cases}
+    actual_by_id: dict[str, dict[str, object]] = {}
+    for index, actual in enumerate(raw_cases):
+        if not isinstance(actual, dict) or not isinstance(actual.get("id"), str):
+            found.append(f"routing case at index {index} is not an object with a string id")
             continue
-        for field, expected_value in fields.items():
-            actual_value = actual.get(field)
-            if field == "profiles" and isinstance(actual_value, list):
-                if set(actual_value) != set(expected_value):
-                    found.append(f"{case_id}.{field} is {actual_value!r}, expected {expected_value!r}")
-            elif actual_value != expected_value:
-                found.append(f"{case_id}.{field} is {actual_value!r}, expected {expected_value!r}")
-    pg_boss = cases.get("pg-boss-ownership-reconciliation")
+        case_id = actual["id"]
+        if case_id in actual_by_id:
+            found.append(f"duplicate routing case id: {case_id}")
+            continue
+        actual_by_id[case_id] = actual
+
+    expected_ids = set(expected_by_id)
+    actual_ids = set(actual_by_id)
+    for case_id in sorted(expected_ids - actual_ids):
+        found.append(f"missing routing case: {case_id}")
+    for case_id in sorted(actual_ids - expected_ids):
+        found.append(f"unexpected routing case: {case_id}")
+
+    for case_id, expected in expected_by_id.items():
+        actual = actual_by_id.get(case_id)
+        if not isinstance(actual, dict):
+            continue
+        missing_fields = sorted(set(expected) - set(actual))
+        additional_fields = sorted(set(actual) - set(expected))
+        if missing_fields:
+            found.append(f"{case_id} is missing contractual fields: {missing_fields}")
+        if additional_fields:
+            found.append(f"{case_id} has additional contractual fields: {additional_fields}")
+        for field in sorted(set(expected) & set(actual)):
+            if actual[field] != expected[field]:
+                found.append(f"{case_id}.{field} is {actual[field]!r}, expected {expected[field]!r}")
+
+    pg_boss = actual_by_id.get("pg-boss-ownership-reconciliation")
     if isinstance(pg_boss, dict) and "react-production-delivery" in pg_boss.get("profiles", []):
         found.append("pg-boss routing must not select the React profile")
     return found
@@ -393,6 +433,10 @@ if routing_truth:
     for case_id, field, contradictory_value in (
         ("pg-boss-ownership-reconciliation", "risk", "green"),
         ("critical-mechanical-luna", "fresh_sol_review_required", False),
+        ("critical-mechanical-luna", "profiles", []),
+        ("bounded-queue-lease-transition", "policy", "economy"),
+        ("bounded-queue-lease-transition", "fresh_sol_review_required", True),
+        ("schema-migration", "policy", "economy"),
         ("bounded-queue-lease-transition", "lane", "luna-app-task"),
     ):
         mutated = copy.deepcopy(routing_truth)
@@ -403,6 +447,40 @@ if routing_truth:
             bool(routing_truth_errors(mutated)),
             f"routing oracle rejects mutation {case_id}.{field}={contradictory_value!r}",
         )
+    duplicate_case = copy.deepcopy(routing_truth)
+    duplicate_case["cases"].append(copy.deepcopy(duplicate_case["cases"][0]))
+    require(
+        bool(routing_truth_errors(duplicate_case)),
+        "routing oracle rejects duplicate case ids",
+    )
+    missing_case = copy.deepcopy(routing_truth)
+    missing_case["cases"] = [case for case in missing_case["cases"] if case.get("id") != "schema-migration"]
+    require(
+        bool(routing_truth_errors(missing_case)),
+        "routing oracle rejects missing case ids",
+    )
+    unexpected_case = copy.deepcopy(routing_truth)
+    unexpected_case["cases"].append({"id": "unexpected-routing-case"})
+    require(
+        bool(routing_truth_errors(unexpected_case)),
+        "routing oracle rejects unexpected case ids",
+    )
+    missing_field = copy.deepcopy(routing_truth)
+    for case in missing_field["cases"]:
+        if case.get("id") == "critical-mechanical-luna":
+            del case["profiles"]
+    require(
+        bool(routing_truth_errors(missing_field)),
+        "routing oracle rejects missing contractual fields",
+    )
+    additional_field = copy.deepcopy(routing_truth)
+    for case in additional_field["cases"]:
+        if case.get("id") == "critical-mechanical-luna":
+            case["unapproved_field"] = True
+    require(
+        bool(routing_truth_errors(additional_field)),
+        "routing oracle rejects additional contractual fields",
+    )
     for sentence in (
         "pg-boss is classified green.",
         "The React profile is mandatory for backend TypeScript.",
