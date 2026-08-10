@@ -168,6 +168,16 @@ has_exact_digest() {
     [ "$(sha256_file "$file")" = "$expected_digest" ]
 }
 
+same_file() {
+  python3 - "$1" "$2" <<'PY'
+import os, sys
+try:
+    raise SystemExit(0 if os.path.samefile(sys.argv[1], sys.argv[2]) else 1)
+except (FileNotFoundError, OSError):
+    raise SystemExit(1)
+PY
+}
+
 preflight_failed=0
 if path_exists "$target_dir" && { [ -L "$target_dir" ] || [ ! -d "$target_dir" ]; }; then
   report "target directory is not a real directory: $target_dir"
@@ -261,6 +271,13 @@ if [ "$upgrade_known" -eq 1 ]; then
   sol_displaced=''
   terra_rollback_current=''
   sol_rollback_current=''
+  terra_displaced_owned=0
+  sol_displaced_owned=0
+  terra_published_owned=0
+  sol_published_owned=0
+  upgrade_lock=$target_dir/.react-sol-advisor-upgrade-lock
+  lock_owner_dir=''
+  lock_acquired=0
   terra_current=$(sha256_file "$terra_template")
   sol_current=$(sha256_file "$sol_template")
   [ -n "$terra_current" ] && [ -n "$sol_current" ] || fail "could not digest shipped upgrade templates"
@@ -282,21 +299,64 @@ if [ "$upgrade_known" -eq 1 ]; then
 
   cleanup_transaction() {
     preserve_artifact=${1-}
+    preserve_artifact_2=${2-}
     [ -n "$transaction_dir" ] && [ -d "$transaction_dir" ] || return 0
     cleanup_ok=1
-    [ "$stage_terra" = "$preserve_artifact" ] || remove_private_exact "Terra stage" "$stage_terra" "$terra_current" || cleanup_ok=0
-    [ "$stage_sol" = "$preserve_artifact" ] || remove_private_exact "Sol stage" "$stage_sol" "$sol_current" || cleanup_ok=0
-    [ "$terra_private_backup" = "$preserve_artifact" ] || remove_private_exact "Terra backup" "$terra_private_backup" "$terra_old" || cleanup_ok=0
-    [ "$sol_private_backup" = "$preserve_artifact" ] || remove_private_exact "Sol backup" "$sol_private_backup" "$sol_old" || cleanup_ok=0
-    [ "$terra_displaced" = "$preserve_artifact" ] || remove_private_exact "Terra displaced destination" "$terra_displaced" "$terra_old" || cleanup_ok=0
-    [ "$sol_displaced" = "$preserve_artifact" ] || remove_private_exact "Sol displaced destination" "$sol_displaced" "$sol_old" || cleanup_ok=0
-    [ "$terra_rollback_current" = "$preserve_artifact" ] || remove_private_exact "Terra rollback destination" "$terra_rollback_current" "$terra_current" || cleanup_ok=0
-    [ "$sol_rollback_current" = "$preserve_artifact" ] || remove_private_exact "Sol rollback destination" "$sol_rollback_current" "$sol_current" || cleanup_ok=0
+    { [ "$stage_terra" = "$preserve_artifact" ] || [ "$stage_terra" = "$preserve_artifact_2" ]; } || remove_private_exact "Terra stage" "$stage_terra" "$terra_current" || cleanup_ok=0
+    { [ "$stage_sol" = "$preserve_artifact" ] || [ "$stage_sol" = "$preserve_artifact_2" ]; } || remove_private_exact "Sol stage" "$stage_sol" "$sol_current" || cleanup_ok=0
+    { [ "$terra_private_backup" = "$preserve_artifact" ] || [ "$terra_private_backup" = "$preserve_artifact_2" ]; } || remove_private_exact "Terra backup" "$terra_private_backup" "$terra_old" || cleanup_ok=0
+    { [ "$sol_private_backup" = "$preserve_artifact" ] || [ "$sol_private_backup" = "$preserve_artifact_2" ]; } || remove_private_exact "Sol backup" "$sol_private_backup" "$sol_old" || cleanup_ok=0
+    { [ "$terra_displaced" = "$preserve_artifact" ] || [ "$terra_displaced" = "$preserve_artifact_2" ]; } || remove_private_exact "Terra displaced destination" "$terra_displaced" "$terra_old" || cleanup_ok=0
+    { [ "$sol_displaced" = "$preserve_artifact" ] || [ "$sol_displaced" = "$preserve_artifact_2" ]; } || remove_private_exact "Sol displaced destination" "$sol_displaced" "$sol_old" || cleanup_ok=0
+    { [ "$terra_rollback_current" = "$preserve_artifact" ] || [ "$terra_rollback_current" = "$preserve_artifact_2" ]; } || remove_private_exact "Terra rollback destination" "$terra_rollback_current" "$terra_current" || cleanup_ok=0
+    { [ "$sol_rollback_current" = "$preserve_artifact" ] || [ "$sol_rollback_current" = "$preserve_artifact_2" ]; } || remove_private_exact "Sol rollback destination" "$sol_rollback_current" "$sol_current" || cleanup_ok=0
     if ! rmdir "$transaction_dir" 2>/dev/null; then
       printf '%s\n' "ERROR: private upgrade transaction preserved for recovery: $transaction_dir" >&2
       cleanup_ok=0
     fi
     [ "$cleanup_ok" -eq 1 ]
+  }
+
+  acquire_upgrade_lock() {
+    owner_name=$(basename "$transaction_dir")
+    lock_owner_dir=$upgrade_lock/$owner_name
+    if ! mkdir "$upgrade_lock" 2>/dev/null; then
+      printf '%s\n' "ERROR: upgrade lock is already held or unsafe: $upgrade_lock" >&2
+      return 1
+    fi
+    lock_acquired=1
+    if ! mkdir "$lock_owner_dir" 2>/dev/null || [ -L "$upgrade_lock" ] ||
+       [ ! -d "$upgrade_lock" ] || [ -L "$lock_owner_dir" ] || [ ! -d "$lock_owner_dir" ]; then
+      printf '%s\n' "ERROR: could not establish ownership-verifiable upgrade lock: $upgrade_lock" >&2
+      return 1
+    fi
+    return 0
+  }
+
+  owns_upgrade_lock() {
+    [ "$lock_acquired" -eq 1 ] &&
+      [ ! -L "$upgrade_lock" ] && [ -d "$upgrade_lock" ] &&
+      [ ! -L "$lock_owner_dir" ] && [ -d "$lock_owner_dir" ]
+  }
+
+  release_upgrade_lock() {
+    [ "$lock_acquired" -eq 1 ] || return 0
+    if [ -L "$upgrade_lock" ] || [ ! -d "$upgrade_lock" ]; then
+      printf '%s\n' "ERROR: upgrade lock ownership changed; preserved for recovery: $upgrade_lock" >&2
+      return 1
+    fi
+    if path_exists "$lock_owner_dir"; then
+      if [ -L "$lock_owner_dir" ] || [ ! -d "$lock_owner_dir" ] || ! rmdir "$lock_owner_dir" 2>/dev/null; then
+        printf '%s\n' "ERROR: upgrade lock owner changed; preserved for recovery: $upgrade_lock" >&2
+        return 1
+      fi
+    fi
+    if ! rmdir "$upgrade_lock" 2>/dev/null; then
+      printf '%s\n' "ERROR: could not release owned upgrade lock; preserved for recovery: $upgrade_lock" >&2
+      return 1
+    fi
+    lock_acquired=0
+    return 0
   }
 
   rollback_role() {
@@ -307,30 +367,70 @@ if [ "$upgrade_known" -eq 1 ]; then
     current_digest=$5
     backup=$6
     rollback_current=$7
+    stage=$8
+    displaced_owned=$9
+    published_owned=${10}
+
+    # State 2 means publication displaced an unknown race and restored or preserved it;
+    # keep the guarded old backup for explicit recovery without touching the destination.
+    if [ "$displaced_owned" -eq 2 ]; then
+      recovery_artifact=$backup
+      return 1
+    fi
+
+    # A backup alone is not mutation ownership. If this transaction never displaced the
+    # accepted old destination, rollback must not inspect, move, or replace it.
+    [ "$displaced_owned" -eq 1 ] || return 0
     role_state=$(classify "$destination" "$template" "$old_digest")
 
-    case "$role_state" in
-      known-stale-0.1.1)
-        return 0
-        ;;
-      current)
-        if path_exists "$rollback_current"; then
-          printf '%s\n' "ERROR: private $label rollback slot already exists; preserved for recovery: $transaction_dir" >&2
+    if [ "$published_owned" -eq 1 ]; then
+      case "$role_state" in
+        known-stale-0.1.1)
+          return 0
+          ;;
+        current)
+          if path_exists "$rollback_current"; then
+            printf '%s\n' "ERROR: private $label rollback slot already exists; preserved for recovery: $transaction_dir" >&2
+            return 1
+          fi
+          if ! mv "$destination" "$rollback_current"; then
+            printf '%s\n' "ERROR: could not safely displace current $label during rollback; preserved for recovery: $transaction_dir" >&2
+            return 1
+          fi
+          if ! has_exact_digest "$rollback_current" "$current_digest" ||
+             ! same_file "$rollback_current" "$stage"; then
+            recovery_artifact=$backup
+            secondary_recovery_artifact=$rollback_current
+            if ! path_exists "$destination" && ln "$rollback_current" "$destination" &&
+               same_file "$rollback_current" "$destination"; then
+              printf '%s\n' "ERROR: $label rollback revalidation failed; restored unknown destination without overwrite; private recovery transaction: $transaction_dir" >&2
+            else
+              printf '%s\n' "ERROR: $label rollback revalidation failed; concurrent destination present; preserved private recovery transaction: $transaction_dir" >&2
+            fi
+            return 1
+          fi
+          ;;
+        missing)
+          ;;
+        *)
+          recovery_artifact=$backup
+          printf '%s\n' "ERROR: refusing to roll back concurrent changed $label destination; preserved for recovery: $transaction_dir" >&2
           return 1
-        fi
-        if ! mv "$destination" "$rollback_current" || ! has_exact_digest "$rollback_current" "$current_digest"; then
-          printf '%s\n' "ERROR: could not safely displace current $label during rollback; preserved for recovery: $transaction_dir" >&2
+          ;;
+      esac
+    else
+      # Publication never completed. Restore the old backup only if the destination is
+      # still absent; any present state belongs to a concurrent actor.
+      case "$role_state" in
+        known-stale-0.1.1) return 0 ;;
+        missing) ;;
+        *)
+          recovery_artifact=$backup
+          printf '%s\n' "ERROR: refusing to roll back unowned concurrent $label destination; preserved for recovery: $transaction_dir" >&2
           return 1
-        fi
-        ;;
-      missing)
-        ;;
-      *)
-        recovery_artifact=$backup
-        printf '%s\n' "ERROR: refusing to roll back concurrent changed $label destination; preserved for recovery: $transaction_dir" >&2
-        return 1
-        ;;
-    esac
+          ;;
+      esac
+    fi
 
     if ! has_exact_digest "$backup" "$old_digest"; then
       printf '%s\n' "ERROR: guarded $label backup changed; preserved for recovery: $transaction_dir" >&2
@@ -352,15 +452,22 @@ if [ "$upgrade_known" -eq 1 ]; then
     upgrade_active=0
     rollback_ok=1
     recovery_artifact=''
-    [ -z "$sol_private_backup" ] || rollback_role Sol "$sol_destination" "$sol_template" "$sol_old" "$sol_current" "$sol_private_backup" "$sol_rollback_current" || rollback_ok=0
-    [ -z "$terra_private_backup" ] || rollback_role Terra "$terra_destination" "$terra_template" "$terra_old" "$terra_current" "$terra_private_backup" "$terra_rollback_current" || rollback_ok=0
+    secondary_recovery_artifact=''
+    if [ "$lock_acquired" -eq 1 ] && ! owns_upgrade_lock; then
+      printf '%s\n' "ERROR: refusing destination rollback after upgrade lock ownership changed: $upgrade_lock" >&2
+      rollback_ok=0
+    else
+      [ -z "$sol_private_backup" ] || rollback_role Sol "$sol_destination" "$sol_template" "$sol_old" "$sol_current" "$sol_private_backup" "$sol_rollback_current" "$stage_sol" "$sol_displaced_owned" "$sol_published_owned" || rollback_ok=0
+      [ -z "$terra_private_backup" ] || rollback_role Terra "$terra_destination" "$terra_template" "$terra_old" "$terra_current" "$terra_private_backup" "$terra_rollback_current" "$stage_terra" "$terra_displaced_owned" "$terra_published_owned" || rollback_ok=0
+    fi
     if [ "$rollback_ok" -eq 1 ]; then
       cleanup_transaction || rollback_ok=0
     elif [ -n "$recovery_artifact" ]; then
       # A concurrent replacement needs the old guarded copy, but stages and other
       # exact private artifacts remain ours and are removed before reporting recovery.
-      cleanup_transaction "$recovery_artifact" || true
+      cleanup_transaction "$recovery_artifact" "$secondary_recovery_artifact" || true
     fi
+    release_upgrade_lock || rollback_ok=0
     if [ "$rollback_ok" -ne 1 ]; then
       printf '%s\n' "ERROR: upgrade rollback failed closed; private recovery transaction: $transaction_dir" >&2
       return 1
@@ -407,6 +514,12 @@ if [ "$upgrade_known" -eq 1 ]; then
   cp "$sol_template" "$stage_sol" && has_exact_digest "$stage_sol" "$sol_current" ||
     fail "could not stage and verify Sol upgrade template"
 
+  # Staging is private and may occur concurrently. Destination classification and every
+  # subsequent mutation are serialized by one target-local, no-clobber directory lock.
+  # The unique nested owner directory is removed only by this transaction through rmdir.
+  acquire_upgrade_lock || fail "upgrade lock is already held; no destination mutation performed"
+  owns_upgrade_lock || fail "upgrade lock ownership could not be verified before destination classification"
+
   if [ "$(classify "$terra_destination" "$terra_template" "$terra_old")" != known-stale-0.1.1 ] ||
      [ "$(classify "$sol_destination" "$sol_template" "$sol_old")" != known-stale-0.1.1 ]; then
     fail "known upgrade destinations changed after preflight"
@@ -438,6 +551,10 @@ if [ "$upgrade_known" -eq 1 ]; then
     stage=$5
     displaced=$6
     backup=$7
+    if ! owns_upgrade_lock; then
+      printf '%s\n' "ERROR: upgrade lock ownership changed before $label publication" >&2
+      return 1
+    fi
     if [ "$(classify "$destination" "$template" "$old_digest")" != known-stale-0.1.1 ]; then
       printf '%s\n' "ERROR: known $label destination changed before publication; no overwrite performed" >&2
       return 1
@@ -453,6 +570,11 @@ if [ "$upgrade_known" -eq 1 ]; then
       # destination may have changed between the pre-publication check and mv; restore
       # that unknown displaced file only when the destination is still absent, never by
       # linking the accepted old backup over it.
+      if [ "$label" = Terra ]; then
+        terra_displaced_owned=2
+      else
+        sol_displaced_owned=2
+      fi
       if ! path_exists "$destination"; then
         if ln "$displaced" "$destination" && cmp -s "$displaced" "$destination"; then
           rm -f "$displaced" || {
@@ -466,9 +588,21 @@ if [ "$upgrade_known" -eq 1 ]; then
       printf '%s\n' "ERROR: $label displace revalidation failed; concurrent destination present; preserved private recovery transaction: $transaction_dir" >&2
       return 1
     fi
-    if ! ln "$stage" "$destination" || [ "$(classify "$destination" "$template" "$old_digest")" != current ]; then
+    if [ "$label" = Terra ]; then
+      terra_displaced_owned=1
+    else
+      sol_displaced_owned=1
+    fi
+    if ! ln "$stage" "$destination" ||
+       [ "$(classify "$destination" "$template" "$old_digest")" != current ] ||
+       ! same_file "$destination" "$stage"; then
       printf '%s\n' "ERROR: concurrent $label destination appeared; no overwrite performed; private recovery transaction: $transaction_dir" >&2
       return 1
+    fi
+    if [ "$label" = Terra ]; then
+      terra_published_owned=1
+    else
+      sol_published_owned=1
     fi
     return 0
   }
@@ -486,6 +620,7 @@ if [ "$upgrade_known" -eq 1 ]; then
      [ "$(classify "$sol_destination" "$sol_template" "$sol_old")" != current ]; then
     fail "post-upgrade exactness check failed"
   fi
+  owns_upgrade_lock || fail "upgrade lock ownership changed before commit"
   if [ -e "$luna_destination" ] || [ -L "$luna_destination" ]; then
     fail "native Luna companion appeared during upgrade: $luna_destination"
   fi
@@ -493,7 +628,10 @@ if [ "$upgrade_known" -eq 1 ]; then
   # Current/current plus Luna absence is the commit point. A later cleanup failure
   # deliberately preserves that committed pair and private recovery evidence.
   upgrade_active=0
-  if ! cleanup_transaction; then
+  committed_cleanup_ok=1
+  cleanup_transaction || committed_cleanup_ok=0
+  release_upgrade_lock || committed_cleanup_ok=0
+  if [ "$committed_cleanup_ok" -ne 1 ]; then
     fail "could not clean committed private upgrade transaction"
   fi
   trap - 0 HUP INT TERM

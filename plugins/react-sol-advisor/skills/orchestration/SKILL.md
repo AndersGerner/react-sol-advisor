@@ -83,11 +83,14 @@ Use the green/amber/red criteria and common examples in
 - **economy** (default): green -> Luna / Max; amber -> Sol decomposition with Luna
   subparts and Terra for the irreducible core; red -> Sol architecture then Terra /
   High plus fresh Sol review.
-- **balanced**: green -> Luna / Max; amber -> Terra / High or explicitly bounded Luna
-  subparts; red -> Terra / High plus fresh Sol review.
+- **balanced**: green -> Luna / Max; amber -> Terra / High or `decomposed-mixed` only
+  when each extracted Luna subpart independently satisfies every green criterion; red
+  -> Terra / High plus fresh Sol review.
 - **critical**: green -> Terra / High unless the parent explicitly identifies a purely
-  mechanical Luna subtask; amber -> Terra / High plus fresh Sol review; red -> Sol
-  architecture, Terra / High implementation, mandatory fresh Sol reviewer.
+  mechanical subtask that independently satisfies every green criterion; amber -> Terra
+  / High plus fresh Sol review; red -> Sol architecture, Terra / High implementation,
+  mandatory fresh Sol reviewer. Every critical task receives fresh Sol review after
+  parent verification, including a wholly or partly Luna-implemented mechanical diff.
 
 For amber work in economy mode, prefer `decomposed-mixed` over sending the entire task
 to Terra when clean ownership boundaries exist.
@@ -268,10 +271,12 @@ verification before final acceptance.
 
 ## Route Terra / High implementation
 
-Use the Terra / High native lane for red economy work, balanced amber or red work that
-is not explicitly decomposed to Luna, and critical work except explicitly identified
-purely mechanical Luna subtasks. Balanced green work remains in the Luna lane. There is
-no second native implementation or fallback lane.
+Use the Terra / High native lane for red economy work, balanced amber or red work whose
+subparts do not independently satisfy every green criterion, and critical work except
+explicitly identified purely mechanical Luna subtasks that independently pass every
+green criterion. Balanced green work remains in the Luna lane. A bounded queue lease,
+orphan-reconciliation transition, or unsettled stale-response race remains Terra-owned
+amber work. There is no second native implementation or fallback lane.
 
 Spawn exactly:
 
@@ -304,13 +309,13 @@ fork_turns: none
 
 The role pins Sol / High and requests read-only isolation. Omit per-spawn model and
 reasoning fields. Observe actual routing, sandbox, and permission metadata. The primary
-session remains responsible for the decision. Do not route the Luna task lane through
-this native reviewer.
+session remains responsible for the decision. Do not route non-critical
+economy/balanced Luna implementation through this native reviewer.
 
 ## Require fresh Sol review only at commitment boundaries
 
-A fresh native Sol review is required after Terra implementation only when the work
-crosses a commitment boundary or the risk class demands it:
+A fresh native Sol review is required after parent verification when the work crosses a
+commitment boundary or the risk class demands it:
 
 - **Red** work in any policy.
 - **Critical** work by definition.
@@ -349,10 +354,13 @@ Apply the observed sandbox policy:
 - If hard isolation is required, the sandbox is unobservable, or any mutation occurs,
   stop the review. Do not claim read-only isolation or hide the mutation.
 
-For the Luna task lane, the primary Sol task itself performs the final review and
-acceptance after the preferred `wait_threads -> read_thread` path or the supported
-exact-thread `read_thread` fallback, actual child-worktree/diff inspection, and rerun
-verification. Do not spawn the native Sol reviewer for that lane. Any correction
+For non-critical economy/balanced Luna work, the primary Sol task itself performs the
+final review and acceptance after the preferred `wait_threads -> read_thread` path or
+the supported exact-thread `read_thread` fallback, actual child-worktree/diff
+inspection, and rerun verification. Do not spawn the native Sol reviewer for that lane
+unless a separate commitment-boundary trigger applies. Critical policy always applies
+that trigger: after parent verification, a fresh native Sol reviewer inspects the
+accumulated task diff, including any Luna-owned mechanical contribution. Any correction
 invalidates the prior child handoff; require a different newly completed turn on the
 same real thread/host/worktree before accepting it or authorizing PR creation.
 

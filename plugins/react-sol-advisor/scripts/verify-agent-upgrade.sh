@@ -166,6 +166,20 @@ assert_unchanged_refusal() {
   fi
 }
 
+wait_for_path() {
+  path=$1
+  label=$2
+  attempts=0
+  while [ ! -e "$path" ] && [ "$attempts" -lt 200 ]; do
+    sleep 0.05
+    attempts=$((attempts + 1))
+  done
+  if [ ! -e "$path" ]; then
+    record_failure "timed out waiting for $label: $path"
+    return 1
+  fi
+}
+
 # A default invocation must never replace an older accepted template implicitly.
 default_target=$tmp_dir/default-stale
 prepare_stale_pair "$default_target" || record_failure "could not prepare default stale fixture"
@@ -383,6 +397,193 @@ assert_unchanged_refusal \
   "deterministic unreadable Terra digest" "$unreadable_target" "Terra destination is unreadable" \
   env RSA_INSTALL_TEST_HOOK=unreadable-terra sh "$installer" --target-dir "$unreadable_target" --upgrade-known
 assert_no_upgrade_artifacts "deterministic unreadable Terra digest" "$unreadable_target"
+
+# An existing lock is user/concurrent state. The installer must neither remove nor alter
+# it, and it must refuse before any role destination mutation.
+preexisting_lock_target=$tmp_dir/preexisting-lock
+prepare_stale_pair "$preexisting_lock_target" || record_failure "could not prepare pre-existing lock fixture"
+add_upstream_sentinels "$preexisting_lock_target" || record_failure "could not prepare pre-existing lock sentinels"
+preexisting_lock=$preexisting_lock_target/.react-sol-advisor-upgrade-lock
+mkdir "$preexisting_lock" || record_failure "could not create pre-existing lock"
+printf '%s\n' "unknown lock owner" > "$preexisting_lock/owner-sentinel" ||
+  record_failure "could not create pre-existing lock owner sentinel"
+preexisting_lock_before=$(role_and_upstream_signature "$preexisting_lock_target")
+if preexisting_lock_output=$(sh "$installer" --target-dir "$preexisting_lock_target" --upgrade-known 2>&1); then
+  record_failure "pre-existing upgrade lock was accepted"
+elif ! printf '%s\n' "$preexisting_lock_output" | grep -Fq "upgrade lock is already held"; then
+  record_failure "pre-existing upgrade lock omitted exact refusal marker"
+elif [ "$(role_and_upstream_signature "$preexisting_lock_target")" != "$preexisting_lock_before" ]; then
+  record_failure "pre-existing upgrade lock refusal changed a role or upstream file"
+elif [ "$(cat "$preexisting_lock/owner-sentinel" 2>/dev/null)" != "unknown lock owner" ]; then
+  record_failure "pre-existing upgrade lock refusal changed unknown owner state"
+else
+  pass "pre-existing unknown upgrade lock is preserved without role mutation"
+fi
+
+# Two installers may both finish initial preflight and enter verifier-controlled staging,
+# but exactly one may own destination mutation. Process A is paused after it acquires the
+# target lock (or, in an unsafe implementation, after its first backup); process B then
+# resumes from staging. The loser must not publish or roll back A's committed pair.
+concurrent_target=$tmp_dir/concurrent-upgrade
+prepare_stale_pair "$concurrent_target" || record_failure "could not prepare concurrent upgrade fixture"
+add_upstream_sentinels "$concurrent_target" || record_failure "could not prepare concurrent upgrade sentinels"
+concurrent_upstream_before=$(role_and_upstream_signature "$concurrent_target" | sed -n '3,4p')
+concurrent_control=$tmp_dir/concurrent-control
+concurrent_bin=$tmp_dir/concurrent-bin
+mkdir "$concurrent_control" "$concurrent_bin" || record_failure "could not prepare concurrent upgrade controls"
+real_cp=$(command -v cp) || record_failure "could not resolve system cp"
+real_ln_for_concurrency=$(command -v ln) || record_failure "could not resolve system ln for concurrency"
+real_mv_for_concurrency=$(command -v mv) || record_failure "could not resolve system mv for concurrency"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$2" in' \
+  '  */terra.stage)' \
+  '    : > "$RSA_TEST_CONTROL/stage-$RSA_TEST_ID"' \
+  '    while [ ! -e "$RSA_TEST_CONTROL/release-stage-$RSA_TEST_ID" ]; do sleep 0.05; done' \
+  '    ;;' \
+  'esac' \
+  'exec "$RSA_TEST_REAL_CP" "$@"' > "$concurrent_bin/cp" || record_failure "could not create concurrent cp wrapper"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$RSA_TEST_ID:$2" in' \
+  '  A:*/terra.backup)' \
+  '    : > "$RSA_TEST_CONTROL/a-at-backup"' \
+  '    while [ ! -e "$RSA_TEST_CONTROL/release-a-backup" ]; do sleep 0.05; done' \
+  '    ;;' \
+  'esac' \
+  'exec "$RSA_TEST_REAL_LN" "$@"' > "$concurrent_bin/ln" || record_failure "could not create concurrent ln wrapper"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$RSA_TEST_ID:$1:$2" in' \
+  '  B:"$RSA_TEST_TERRA_DEST":*/terra.displaced)' \
+  '    attempts=0' \
+  '    while { ! cmp -s "$RSA_TEST_TERRA_CURRENT" "$RSA_TEST_TERRA_DEST" || ! cmp -s "$RSA_TEST_SOL_CURRENT" "$RSA_TEST_SOL_DEST"; } && [ "$attempts" -lt 200 ]; do' \
+  '      sleep 0.05' \
+  '      attempts=$((attempts + 1))' \
+  '    done' \
+  '    ;;' \
+  'esac' \
+  'exec "$RSA_TEST_REAL_MV" "$@"' > "$concurrent_bin/mv" || record_failure "could not create concurrent mv wrapper"
+chmod 755 "$concurrent_bin/cp" "$concurrent_bin/ln" "$concurrent_bin/mv" ||
+  record_failure "could not make concurrent wrappers executable"
+concurrent_a_output=$concurrent_control/a.out
+concurrent_b_output=$concurrent_control/b.out
+RSA_TEST_ID=A RSA_TEST_CONTROL="$concurrent_control" RSA_TEST_REAL_CP="$real_cp" \
+RSA_TEST_REAL_LN="$real_ln_for_concurrency" RSA_TEST_REAL_MV="$real_mv_for_concurrency" \
+RSA_TEST_TERRA_DEST="$concurrent_target/$terra_file" RSA_TEST_SOL_DEST="$concurrent_target/$sol_file" \
+RSA_TEST_TERRA_CURRENT="$terra_current" RSA_TEST_SOL_CURRENT="$sol_current" \
+PATH="$concurrent_bin:$PATH" sh "$installer" --target-dir "$concurrent_target" --upgrade-known >"$concurrent_a_output" 2>&1 &
+concurrent_a_pid=$!
+RSA_TEST_ID=B RSA_TEST_CONTROL="$concurrent_control" RSA_TEST_REAL_CP="$real_cp" \
+RSA_TEST_REAL_LN="$real_ln_for_concurrency" RSA_TEST_REAL_MV="$real_mv_for_concurrency" \
+RSA_TEST_TERRA_DEST="$concurrent_target/$terra_file" RSA_TEST_SOL_DEST="$concurrent_target/$sol_file" \
+RSA_TEST_TERRA_CURRENT="$terra_current" RSA_TEST_SOL_CURRENT="$sol_current" \
+PATH="$concurrent_bin:$PATH" sh "$installer" --target-dir "$concurrent_target" --upgrade-known >"$concurrent_b_output" 2>&1 &
+concurrent_b_pid=$!
+wait_for_path "$concurrent_control/stage-A" "concurrent process A staging" || true
+wait_for_path "$concurrent_control/stage-B" "concurrent process B staging" || true
+: > "$concurrent_control/release-stage-A"
+wait_for_path "$concurrent_control/a-at-backup" "process A target ownership" || true
+: > "$concurrent_control/release-stage-B"
+sleep 0.2
+: > "$concurrent_control/release-a-backup"
+if wait "$concurrent_a_pid"; then concurrent_a_status=0; else concurrent_a_status=$?; fi
+if wait "$concurrent_b_pid"; then concurrent_b_status=0; else concurrent_b_status=$?; fi
+if [ "$concurrent_a_status" -ne 0 ]; then
+  record_failure "target-lock winner failed concurrent upgrade"
+elif [ "$concurrent_b_status" -eq 0 ]; then
+  record_failure "concurrent loser was allowed to publish"
+elif ! grep -Fq "upgrade lock is already held" "$concurrent_b_output"; then
+  record_failure "concurrent loser omitted exact target-lock refusal marker"
+elif grep -Fq "ROLLBACK:" "$concurrent_b_output"; then
+  record_failure "concurrent loser rolled back a destination it did not own"
+elif [ "$(grep -h 'UPGRADED KNOWN 0.1.1' "$concurrent_a_output" "$concurrent_b_output" | wc -l | tr -d ' ')" -ne 2 ]; then
+  record_failure "concurrent upgrade did not have exactly one successful pair publication"
+elif ! cmp -s "$terra_current" "$concurrent_target/$terra_file" ||
+     ! cmp -s "$sol_current" "$concurrent_target/$sol_file"; then
+  record_failure "successful concurrent process did not leave current/current"
+elif [ "$(role_and_upstream_signature "$concurrent_target" | sed -n '3,4p')" != "$concurrent_upstream_before" ]; then
+  record_failure "concurrent upgrade changed an upstream sentinel"
+else
+  pass "target-local lock serializes concurrent upgrades without loser rollback"
+  assert_no_upgrade_artifacts "concurrent upgrade" "$concurrent_target"
+fi
+
+# Rollback has the same classify-to-move race as publication. Replace the canonical role
+# immediately before each rollback-current displacement and require the unknown bytes to
+# be restored without clobbering, while the guarded old copy remains recoverable.
+rollback_swap_bin=$tmp_dir/rollback-swap-bin
+mkdir "$rollback_swap_bin" || record_failure "could not prepare rollback swap wrappers"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$1:$2" in' \
+  '  "$RSA_TEST_SWAP_DEST":*/"$RSA_TEST_SWAP_SLOT")' \
+  '    "$RSA_TEST_REAL_MV" "$RSA_TEST_SWAP_SENTINEL" "$1"' \
+  '    exec "$RSA_TEST_REAL_MV" "$@"' \
+  '    ;;' \
+  'esac' \
+  'exec "$RSA_TEST_REAL_MV" "$@"' > "$rollback_swap_bin/mv" || record_failure "could not create rollback swap mv wrapper"
+chmod 755 "$rollback_swap_bin/mv" || record_failure "could not make rollback swap mv wrapper executable"
+
+rollback_swap_terra_target=$tmp_dir/rollback-swap-terra
+prepare_stale_pair "$rollback_swap_terra_target" || record_failure "could not prepare Terra rollback swap fixture"
+add_upstream_sentinels "$rollback_swap_terra_target" || record_failure "could not prepare Terra rollback swap sentinels"
+rollback_swap_terra_upstream=$(role_and_upstream_signature "$rollback_swap_terra_target" | sed -n '3,4p')
+rollback_swap_terra_reference=$tmp_dir/rollback-unknown-terra
+printf '%s\n' "concurrent unknown Terra during rollback" > "$rollback_swap_terra_reference"
+rollback_swap_terra_inject=$rollback_swap_terra_target/.verifier-rollback-unknown-terra
+cp "$rollback_swap_terra_reference" "$rollback_swap_terra_inject"
+if rollback_swap_terra_output=$(RSA_INSTALL_TEST_FAIL_REPLACE=sol RSA_TEST_REAL_MV="$real_mv" \
+  RSA_TEST_SWAP_DEST="$rollback_swap_terra_target/$terra_file" RSA_TEST_SWAP_SLOT=terra.rollback-current \
+  RSA_TEST_SWAP_SENTINEL="$rollback_swap_terra_inject" PATH="$rollback_swap_bin:$PATH" \
+  sh "$installer" --target-dir "$rollback_swap_terra_target" --upgrade-known 2>&1); then
+  record_failure "Terra rollback destination swap was accepted"
+elif ! printf '%s\n' "$rollback_swap_terra_output" | grep -Fq "Terra rollback revalidation failed; restored unknown destination without overwrite"; then
+  record_failure "Terra rollback destination swap omitted exact CAS restoration marker"
+elif ! cmp -s "$rollback_swap_terra_reference" "$rollback_swap_terra_target/$terra_file" ||
+     ! cmp -s "$sol_fixture" "$rollback_swap_terra_target/$sol_file"; then
+  record_failure "Terra rollback destination swap lost unknown Terra content or changed Sol"
+elif [ "$(role_and_upstream_signature "$rollback_swap_terra_target" | sed -n '3,4p')" != "$rollback_swap_terra_upstream" ]; then
+  record_failure "Terra rollback destination swap changed an upstream sentinel"
+else
+  pass "Terra rollback CAS restores unknown concurrent content without overwrite"
+fi
+
+rollback_swap_sol_target=$tmp_dir/rollback-swap-sol
+prepare_stale_pair "$rollback_swap_sol_target" || record_failure "could not prepare Sol rollback swap fixture"
+add_upstream_sentinels "$rollback_swap_sol_target" || record_failure "could not prepare Sol rollback swap sentinels"
+rollback_swap_sol_upstream=$(role_and_upstream_signature "$rollback_swap_sol_target" | sed -n '3,4p')
+rollback_swap_sol_reference=$tmp_dir/rollback-unknown-sol
+printf '%s\n' "concurrent unknown Sol during rollback" > "$rollback_swap_sol_reference"
+rollback_swap_sol_inject=$rollback_swap_sol_target/.verifier-rollback-unknown-sol
+cp "$rollback_swap_sol_reference" "$rollback_swap_sol_inject"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$1:$2" in' \
+  '  */sol.stage:"$RSA_TEST_SOL_DEST")' \
+  '    "$RSA_TEST_REAL_LN" "$@" || exit 1' \
+  '    printf "%s\n" "concurrent retired Luna sentinel" > "$RSA_TEST_LUNA_DEST"' \
+  '    exit 0' \
+  '    ;;' \
+  'esac' \
+  'exec "$RSA_TEST_REAL_LN" "$@"' > "$rollback_swap_bin/ln" || record_failure "could not create post-publish Luna injection wrapper"
+chmod 755 "$rollback_swap_bin/ln" || record_failure "could not make post-publish Luna injection wrapper executable"
+if rollback_swap_sol_output=$(RSA_TEST_REAL_MV="$real_mv" RSA_TEST_REAL_LN="$real_ln" \
+  RSA_TEST_SWAP_DEST="$rollback_swap_sol_target/$sol_file" RSA_TEST_SWAP_SLOT=sol.rollback-current \
+  RSA_TEST_SWAP_SENTINEL="$rollback_swap_sol_inject" RSA_TEST_SOL_DEST="$rollback_swap_sol_target/$sol_file" \
+  RSA_TEST_LUNA_DEST="$rollback_swap_sol_target/$luna_file" PATH="$rollback_swap_bin:$PATH" \
+  sh "$installer" --target-dir "$rollback_swap_sol_target" --upgrade-known 2>&1); then
+  record_failure "Sol rollback destination swap was accepted"
+elif ! printf '%s\n' "$rollback_swap_sol_output" | grep -Fq "Sol rollback revalidation failed; restored unknown destination without overwrite"; then
+  record_failure "Sol rollback destination swap omitted exact CAS restoration marker"
+elif ! cmp -s "$rollback_swap_sol_reference" "$rollback_swap_sol_target/$sol_file" ||
+     ! cmp -s "$terra_fixture" "$rollback_swap_sol_target/$terra_file"; then
+  record_failure "Sol rollback destination swap lost unknown Sol content or failed to restore Terra"
+elif [ "$(role_and_upstream_signature "$rollback_swap_sol_target" | sed -n '3,4p')" != "$rollback_swap_sol_upstream" ]; then
+  record_failure "Sol rollback destination swap changed an upstream sentinel"
+else
+  pass "Sol rollback CAS restores unknown concurrent content without overwrite"
+fi
 
 # Exact accepted pair is the sole automatic-upgrade admission case.
 upgrade_target=$tmp_dir/upgrade-known

@@ -32,6 +32,7 @@ python3 - "$repo_dir" "$0" <<'PY'
 from __future__ import annotations
 
 import json
+import copy
 import re
 import subprocess
 import sys
@@ -70,6 +71,109 @@ def section(value: str, heading: str) -> str:
         flags=re.MULTILINE,
     )
     return match.group(1) if match else ""
+
+
+def parse_routing_truth_table(value: str) -> dict[str, object]:
+    match = re.search(
+        r"```json routing-truth-table\s*([\s\S]*?)\s*```",
+        value,
+        flags=re.MULTILINE,
+    )
+    if not match:
+        return {}
+    try:
+        parsed = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def routing_truth_errors(table: dict[str, object]) -> list[str]:
+    raw_cases = table.get("cases")
+    if not isinstance(raw_cases, list):
+        return ["routing truth table has no cases list"]
+    cases = {
+        case.get("id"): case
+        for case in raw_cases
+        if isinstance(case, dict) and isinstance(case.get("id"), str)
+    }
+    expected: dict[str, dict[str, object]] = {
+        "pure-typescript-mapper": {
+            "policy": "economy",
+            "risk": "green",
+            "lane": "luna-app-task",
+            "profiles": ["production-delivery", "typescript-backend-delivery"],
+            "fresh_sol_review_required": False,
+        },
+        "pg-boss-ownership-reconciliation": {
+            "policy": "economy",
+            "risk": "amber",
+            "lane": "decomposed-mixed",
+            "profiles": ["production-delivery", "postgres-data-delivery", "worker-integration-delivery"],
+            "terra_owns": "consistency core",
+            "luna_owns": "independently-green helpers, fixtures, tests, or docs only",
+            "fresh_sol_review_required": False,
+        },
+        "schema-migration": {
+            "risk": "red",
+            "lane": "terra-native",
+            "profiles": ["production-delivery", "postgres-data-delivery"],
+            "fresh_sol_review_required": True,
+        },
+        "legacy-react-url-filter": {
+            "policy": "economy",
+            "risk": "green",
+            "lane": "luna-app-task",
+            "profiles": ["production-delivery", "react-production-delivery"],
+            "invocation": "@react-sol-advisor",
+            "fresh_sol_review_required": False,
+        },
+        "critical-mechanical-luna": {
+            "policy": "critical",
+            "risk": "green",
+            "lane": "luna-app-task",
+            "fresh_sol_review_required": True,
+        },
+        "bounded-queue-lease-transition": {
+            "risk": "amber",
+            "lane": "terra-native",
+        },
+        "bounded-orphan-reconciliation-state-machine": {
+            "risk": "amber",
+            "lane": "terra-native",
+        },
+        "bounded-unsettled-stale-response-race": {
+            "risk": "amber",
+            "lane": "terra-native",
+        },
+    }
+    found: list[str] = []
+    for case_id, fields in expected.items():
+        actual = cases.get(case_id)
+        if not isinstance(actual, dict):
+            found.append(f"missing routing case: {case_id}")
+            continue
+        for field, expected_value in fields.items():
+            actual_value = actual.get(field)
+            if field == "profiles" and isinstance(actual_value, list):
+                if set(actual_value) != set(expected_value):
+                    found.append(f"{case_id}.{field} is {actual_value!r}, expected {expected_value!r}")
+            elif actual_value != expected_value:
+                found.append(f"{case_id}.{field} is {actual_value!r}, expected {expected_value!r}")
+    pg_boss = cases.get("pg-boss-ownership-reconciliation")
+    if isinstance(pg_boss, dict) and "react-production-delivery" in pg_boss.get("profiles", []):
+        found.append("pg-boss routing must not select the React profile")
+    return found
+
+
+def routing_contradictions(value: str) -> list[str]:
+    patterns = {
+        "pg-boss cannot be green by boundedness alone": r"pg-boss[^\n.]*\b(?:is|as|classified)\s+green\b",
+        "backend TypeScript cannot require React": r"React profile is mandatory for backend TypeScript",
+        "critical mechanical Luna still requires fresh Sol": r"critical mechanical Luna[^\n.]*does not require (?:a )?fresh Sol",
+        "bounded queue leases remain amber": r"bounded queue lease transition[^\n.]*\b(?:is|as|classified)\s+green\b",
+    }
+    return [message for message, pattern in patterns.items() if re.search(pattern, value, flags=re.IGNORECASE)]
 
 
 manifest_path = "plugins/react-sol-advisor/.codex-plugin/plugin.json"
@@ -251,7 +355,7 @@ representative_examples = {
     "bounded REST handler following established pattern": ("green", "amber", "contract", "side effect"),
     "pg-boss admission plus ownership/orphan reconciliation": (
         "amber", "red", "schema", "consistency", "Terra", "irreducible core", "Luna",
-        "bounded helpers", "fixtures", "tests", "docs",
+        "independently green helpers", "fixtures", "tests", "docs",
     ),
     "schema migration": ("red", "Terra", "fresh Sol"),
     "React URL filter": ("green", "Luna", "production", "React"),
@@ -266,6 +370,49 @@ require(
     "pg-boss" in profiles.casefold() and not includes_all(profiles, "pg-boss", "rejected", "non-React"),
     "delivery-profiles.md does not reject pg-boss merely because it is non-React",
 )
+
+# Routing examples are executable policy, not a bag of vocabulary. Parse exact outcomes
+# and reject both missing fields and contradictory claims attached to representative cases.
+routing_truth = parse_routing_truth_table(profiles)
+routing_truth_failures = routing_truth_errors(routing_truth)
+require(
+    not routing_truth_failures,
+    "machine-readable routing/profile truth table has exact case-scoped outcomes"
+    + (f": {'; '.join(routing_truth_failures)}" if routing_truth_failures else ""),
+)
+profile_contradictions = routing_contradictions(profiles)
+require(
+    not profile_contradictions,
+    "delivery-profile prose contains no contradictory routing outcomes"
+    + (f": {'; '.join(profile_contradictions)}" if profile_contradictions else ""),
+)
+
+# Mutation checks prove the oracle fails for associated outcomes rather than passing
+# because expected words happen to occur elsewhere in the document.
+if routing_truth:
+    for case_id, field, contradictory_value in (
+        ("pg-boss-ownership-reconciliation", "risk", "green"),
+        ("critical-mechanical-luna", "fresh_sol_review_required", False),
+        ("bounded-queue-lease-transition", "lane", "luna-app-task"),
+    ):
+        mutated = copy.deepcopy(routing_truth)
+        for case in mutated.get("cases", []):
+            if isinstance(case, dict) and case.get("id") == case_id:
+                case[field] = contradictory_value
+        require(
+            bool(routing_truth_errors(mutated)),
+            f"routing oracle rejects mutation {case_id}.{field}={contradictory_value!r}",
+        )
+    for sentence in (
+        "pg-boss is classified green.",
+        "The React profile is mandatory for backend TypeScript.",
+        "Critical mechanical Luna does not require fresh Sol.",
+        "A bounded queue lease transition is classified green.",
+    ):
+        require(
+            bool(routing_contradictions(profiles + "\n" + sentence)),
+            f"routing oracle rejects contradictory prose mutation: {sentence}",
+        )
 
 require(
     includes_all(skill, "No silent fallback", "explicit user authorization")
@@ -333,9 +480,10 @@ require(
         routing,
         "| Green | Luna / Max app task; parent Sol verifies and accepts |",
         "| Amber | Sol decomposes into green Luna units", "| Red | Sol settles architecture; Terra / High implements; fresh Sol reviewer required |",
-        "### Balanced", "| Green | Luna / Max app task |", "| Amber | Terra / High by default, or Luna for explicitly bounded subparts |",
+        "### Balanced", "| Green | Luna / Max app task |", "| Amber | Terra / High by default, or `decomposed-mixed` when extracted subparts independently satisfy every green criterion |",
         "| Red | Terra / High plus fresh Sol reviewer |", "### Critical",
-        "| Green | Terra / High plus fresh Sol reviewer required", "| Amber | Terra / High plus fresh Sol reviewer required |",
+        "| Green | Terra / High plus fresh Sol reviewer required", "purely mechanical Luna subtask; fresh Sol review still required",
+        "| Amber | Terra / High plus fresh Sol reviewer required |",
         "| Red | Sol architecture, Terra / High implementation, mandatory fresh Sol reviewer |",
     ),
     "routing preserves the accepted economy, balanced, and critical green/amber/red mapping",
@@ -345,9 +493,10 @@ require(
         routing,
         "**Red** work in any policy", "**Critical** work by definition",
         "**Amber** work in `balanced` or irreducible `economy` core", "consequential existing boundaries",
-        "Routine green or non-consequential amber Terra work", "Do not spawn a fresh Sol reviewer",
+        "required after parent verification", "Routine green or non-consequential amber Terra work",
+        "economy/balanced cost control", "critical task implemented wholly or partly",
     ),
-    "fresh Sol review remains limited to red, critical, and consequential amber boundaries rather than becoming cheaper",
+    "fresh Sol review covers red, every critical task including Luna contributions, and consequential amber boundaries without lowering other review economics",
 )
 
 # 15. Native role identity and reviewer isolation are stable implementation interfaces.

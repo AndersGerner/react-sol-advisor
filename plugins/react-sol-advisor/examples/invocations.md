@@ -24,7 +24,9 @@ Use economy mode. Do not create a PR; leave an accepted commit and verification 
 ```text
 @react-sol-advisor Implement FLE-456 using balanced mode.
 Use Terra for any unresolved Next.js caching, race-condition, or cross-package contract
-work. Use Luna for bounded UI, tests, and mechanical call-site changes.
+work. Use Luna only for extracted UI, test, or mechanical call-site workstreams that
+independently satisfy every green criterion; boundedness alone is insufficient. Keep
+bounded queue leases, reconciliation transitions, and unsettled races Terra-owned.
 Create a draft PR after acceptance.
 ```
 

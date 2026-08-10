@@ -30,10 +30,91 @@ workstream, each with the profiles its ownership requires.
    backend, adding a data or integration profile only when the owned behavior requires it.
 3. **pg-boss admission plus ownership/orphan reconciliation** — amber or red depending
    on schema and consistency impact. Terra owns the irreducible core; Luna may own
-   bounded helpers, fixtures, tests, and docs with non-overlapping ownership.
+   independently green helpers, fixtures, tests, and docs with non-overlapping ownership.
 4. **Schema migration** — red; use Postgres/data protections and route implementation
    through Terra plus fresh Sol review.
 5. **React URL filter** — green when the owned behavior is local and established; Luna
    is eligible with production-delivery plus React production-delivery.
 6. **Mixed React/backend** — decomposed into non-overlapping workstreams, with profiles per workstream
    rather than forcing every stream to carry React requirements.
+
+## Executable routing truth table
+
+This case-scoped table is authoritative for the representative outcomes below. The
+acceptance verifier parses it as JSON and mutation-checks contradictory risk, lane,
+profile, and fresh-review outcomes; prose elsewhere cannot satisfy a missing field.
+
+```json routing-truth-table
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "pure-typescript-mapper",
+      "policy": "economy",
+      "risk": "green",
+      "lane": "luna-app-task",
+      "profiles": ["production-delivery", "typescript-backend-delivery"],
+      "fresh_sol_review_required": false
+    },
+    {
+      "id": "pg-boss-ownership-reconciliation",
+      "policy": "economy",
+      "risk": "amber",
+      "lane": "decomposed-mixed",
+      "profiles": ["production-delivery", "postgres-data-delivery", "worker-integration-delivery"],
+      "terra_owns": "consistency core",
+      "luna_owns": "independently-green helpers, fixtures, tests, or docs only",
+      "fresh_sol_review_required": false
+    },
+    {
+      "id": "schema-migration",
+      "policy": "balanced",
+      "risk": "red",
+      "lane": "terra-native",
+      "profiles": ["production-delivery", "postgres-data-delivery"],
+      "fresh_sol_review_required": true
+    },
+    {
+      "id": "legacy-react-url-filter",
+      "policy": "economy",
+      "risk": "green",
+      "lane": "luna-app-task",
+      "profiles": ["production-delivery", "react-production-delivery"],
+      "invocation": "@react-sol-advisor",
+      "fresh_sol_review_required": false
+    },
+    {
+      "id": "critical-mechanical-luna",
+      "policy": "critical",
+      "risk": "green",
+      "lane": "luna-app-task",
+      "profiles": ["production-delivery"],
+      "fresh_sol_review_required": true
+    },
+    {
+      "id": "bounded-queue-lease-transition",
+      "policy": "balanced",
+      "risk": "amber",
+      "lane": "terra-native",
+      "profiles": ["production-delivery", "worker-integration-delivery"],
+      "fresh_sol_review_required": false
+    },
+    {
+      "id": "bounded-orphan-reconciliation-state-machine",
+      "policy": "balanced",
+      "risk": "amber",
+      "lane": "terra-native",
+      "profiles": ["production-delivery", "worker-integration-delivery"],
+      "fresh_sol_review_required": false
+    },
+    {
+      "id": "bounded-unsettled-stale-response-race",
+      "policy": "balanced",
+      "risk": "amber",
+      "lane": "terra-native",
+      "profiles": ["production-delivery", "worker-integration-delivery"],
+      "fresh_sol_review_required": false
+    }
+  ]
+}
+```

@@ -16,11 +16,15 @@ All notable changes to Sol Development Advisor will be documented in this file.
   mixed work while retaining historical `QUALITY CONTRACT` records as compatible input.
 - Generalized routing packets and examples without changing the established Luna
   lifecycle, model pins, risk thresholds, or economics.
+- Required every Luna-owned subpart of aggregate amber work to independently satisfy all
+  green criteria, while preserving mandatory fresh Sol review for every critical task,
+  including purely mechanical Luna contributions.
 
 ### Added
 
 - Explicit safe `--upgrade-known` replacement for only the exact accepted 0.1.1 native
-  Terra/Sol pair, including guarded backups, fail-closed rollback, and current/current
+  Terra/Sol pair, including a target-local ownership lock, per-role publication proof,
+  rollback CAS restoration, guarded backups, fail-closed recovery, and current/current
   idempotence.
 - Focused generalization and known-native-role-upgrade acceptance verifiers.
 

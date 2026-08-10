@@ -108,8 +108,15 @@ when clean non-overlapping ownership exists.
 | Risk | Default route |
 | --- | --- |
 | Green | Luna / Max app task |
-| Amber | Terra / High by default, or Luna for explicitly bounded subparts |
+| Amber | Terra / High by default, or `decomposed-mixed` when extracted subparts independently satisfy every green criterion |
 | Red | Terra / High plus fresh Sol reviewer |
+
+For balanced amber work, boundedness alone is not enough for Luna. Classify every
+extracted workstream separately. A queue transition, reconciliation state machine,
+cancellation race, or unsettled stale-response behavior remains amber and Terra-owned
+even when it fits in one file. Only an independently green helper, fixture, test, doc,
+or mechanical call site may use Luna; the aggregate amber task remains
+`decomposed-mixed`.
 
 ### Critical
 
@@ -118,14 +125,18 @@ fresh Sol review after parent verification, even when the implementation itself 
 
 | Risk | Default route |
 | --- | --- |
-| Green | Terra / High plus fresh Sol reviewer required unless the parent identifies a purely mechanical Luna subtask |
+| Green | Terra / High plus fresh Sol reviewer required unless the parent identifies an independently green, purely mechanical Luna subtask; fresh Sol review still required |
 | Amber | Terra / High plus fresh Sol reviewer required |
 | Red | Sol architecture, Terra / High implementation, mandatory fresh Sol reviewer |
 
+Critical Luna contributions do not waive review. After parent verification, the fresh
+native Sol reviewer inspects the accumulated task diff, including every Luna-owned
+mechanical contribution.
+
 ## 7. Fresh Sol review
 
-A fresh native Sol reviewer is required after Terra implementation only when the work
-crosses a commitment boundary or the risk class demands it:
+A fresh native Sol reviewer is required after parent verification when the work crosses
+a commitment boundary or the risk class demands it:
 
 - **Red** work in any policy.
 - **Critical** work by definition.
@@ -136,7 +147,9 @@ crosses a commitment boundary or the risk class demands it:
 
 Routine green or non-consequential amber Terra work is accepted by the primary Sol
 session after diff inspection and verification. Do not spawn a fresh Sol reviewer merely
-for reassurance.
+for reassurance. This economy/balanced cost control does not override the mandatory
+critical-policy review, including a critical task implemented wholly or partly through
+an independently green Luna contribution.
 
 ## 8. Luna escalation triggers
 

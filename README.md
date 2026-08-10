@@ -21,10 +21,13 @@ baseline SHA, and licensing are recorded in [UPSTREAM.md](UPSTREAM.md).
 - **Economy** (default): bounded green work -> Luna / Max; amber work -> Sol
   decomposition with Luna subparts and Terra core; red work -> Terra / High plus fresh
   Sol review.
-- **Balanced**: green -> Luna / Max; amber -> Terra / High or explicitly bounded Luna
-  subparts; red -> Terra / High plus fresh Sol review.
-- **Critical**: green -> Terra / High unless a purely mechanical Luna subtask is
-  explicit; amber/red -> Terra / High. All critical work receives a mandatory fresh Sol review.
+- **Balanced**: green -> Luna / Max; amber -> Terra / High or `decomposed-mixed` only
+  when every extracted Luna workstream independently passes all green criteria; red ->
+  Terra / High plus fresh Sol review.
+- **Critical**: green -> Terra / High unless a purely mechanical Luna subtask
+  independently passes all green criteria; amber/red -> Terra / High.
+  All critical work receives a mandatory fresh Sol review. That review runs after parent
+  verification and includes any wholly or partly Luna-implemented mechanical diff.
 - **No silent fallback**: if a lane is unavailable, report the missing capability and
   require explicit authorization before switching to a more expensive lane.
 - **Delivery profiles**: `production-delivery` is mandatory for every implementation
@@ -79,8 +82,13 @@ The installer:
   replacement path and accepts only the exact known 0.1.1 Terra/Sol pair; mixed,
   missing, modified, nonregular, symlinked, unreadable, and retired-Luna states fail
   before mutation.
-- Stages both current templates, uses guarded backups, rolls back a failed pair
-  replacement, and is idempotent for an exact current/current pair.
+- Stages both current templates, acquires one target-local ownership-verifiable upgrade
+  lock before final classification, and tracks per-role publication ownership. A
+  concurrent loser never rolls back the winner; rollback revalidates displaced content
+  and restores unknown concurrent bytes without clobbering.
+- Rolls back a failed pair replacement, removes owned lock/transaction artifacts, and
+  is idempotent for an exact current/current pair. An unknown or stale lock fails closed
+  for manual inspection rather than being removed automatically.
 - Rejects the unsupported `react-sol-advisor-luna-implementer.toml`; Luna remains an
   app-task lane.
 - Never creates native Luna or reads, changes, or deletes upstream companion-role
