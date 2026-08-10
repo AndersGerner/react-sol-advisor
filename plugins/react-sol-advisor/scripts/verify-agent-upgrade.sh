@@ -36,6 +36,8 @@ done
 
 [ "$failures" -eq 0 ] || exit 1
 
+[ -x "$installer" ] || record_failure "install-agents.sh is not executable"
+
 # Fixtures are immutable, accepted 0.1.1 templates rather than copies manufactured by
 # the installer. The hashes protect the only files eligible for automatic replacement.
 sha256_file() {
@@ -100,6 +102,28 @@ target_signature() {
   )
 }
 
+role_and_upstream_signature() {
+  target=$1
+  for name in \
+    "$terra_file" \
+    "$sol_file" \
+    sol-advisor-terra-implementer.toml \
+    sol-advisor-sol-reviewer.toml; do
+    printf '%s %s\n' "$name" "$(sha256_file "$target/$name")"
+  done
+}
+
+assert_no_upgrade_artifacts() {
+  label=$1
+  target=$2
+
+  if artifact=$(find "$target" -maxdepth 1 -name '.react-sol-advisor-upgrade-*' -print -quit) && [ -n "$artifact" ]; then
+    record_failure "$label left an upgrade stage or backup artifact: $artifact"
+  else
+    pass "$label leaves no upgrade stage or backup artifacts"
+  fi
+}
+
 assert_unchanged_refusal() {
   label=$1
   target=$2
@@ -111,7 +135,7 @@ assert_unchanged_refusal() {
   }
   if output=$("$@" 2>&1); then
     record_failure "$label was accepted instead of refused"
-  elif ! printf '%s\n' "$output" | grep -Fq "$expected_marker"; then
+  elif ! printf '%s\n' "$output" | grep -Fq -- "$expected_marker"; then
     record_failure "$label refusal omitted exact marker: $expected_marker"
   elif [ "$(target_signature "$target")" != "$before" ]; then
     record_failure "$label mutated a destination before refusing it"
@@ -136,6 +160,77 @@ assert_unchanged_refusal \
   "--check of known 0.1.1 roles" "$check_target" "known stale 0.1.1" \
   sh "$installer" --target-dir "$check_target" --check
 
+# Mutually exclusive flags and invalid failure-injection values must fail before any
+# stage, backup, or destination mutation. These are deliberate safety interfaces, not
+# convenience argument parsing.
+combined_target=$tmp_dir/combined-flags
+prepare_stale_pair "$combined_target" || record_failure "could not prepare combined-flags fixture"
+assert_unchanged_refusal \
+  "--check plus --upgrade-known" "$combined_target" "--check and --upgrade-known cannot be used together" \
+  sh "$installer" --target-dir "$combined_target" --check --upgrade-known
+
+invalid_injection_target=$tmp_dir/invalid-injection
+prepare_stale_pair "$invalid_injection_target" || record_failure "could not prepare invalid injection fixture"
+assert_unchanged_refusal \
+  "invalid replacement failure injection" "$invalid_injection_target" "RSA_INSTALL_TEST_FAIL_REPLACE must be empty or sol" \
+  env RSA_INSTALL_TEST_FAIL_REPLACE=terra sh "$installer" --target-dir "$invalid_injection_target" --upgrade-known
+
+backup_target=$tmp_dir/preexisting-backup
+prepare_stale_pair "$backup_target" || record_failure "could not prepare preexisting backup fixture"
+printf '%s\n' "preserve this guarded recovery artifact" > "$backup_target/.react-sol-advisor-upgrade-terra.backup" ||
+  record_failure "could not prepare preexisting guarded backup"
+assert_unchanged_refusal \
+  "pre-existing upgrade backup" "$backup_target" "refusing existing upgrade backup" \
+  sh "$installer" --target-dir "$backup_target" --upgrade-known
+
+# Simulate a concurrent process creating an unknown Sol backup between the preflight
+# absence check and the second hard-link call. The installer may clean only the Terra
+# backup it created itself; it must preserve the unknown Sol sentinel and both old role
+# destinations unchanged.
+toctou_target=$tmp_dir/backup-creation-race
+prepare_stale_pair "$toctou_target" || record_failure "could not prepare backup race fixture"
+add_upstream_sentinels "$toctou_target" || record_failure "could not prepare backup race sentinels"
+toctou_before=$(role_and_upstream_signature "$toctou_target")
+fake_bin=$tmp_dir/fake-ln-bin
+mkdir "$fake_bin" || record_failure "could not prepare fake ln directory"
+real_ln=$(command -v ln) || record_failure "could not resolve system ln"
+sol_backup_sentinel=$tmp_dir/unknown-sol-backup-sentinel
+printf '%s\n' "concurrent unknown Sol backup" > "$sol_backup_sentinel" ||
+  record_failure "could not prepare unknown Sol backup sentinel"
+fake_ln=$fake_bin/ln
+printf '%s\n' \
+  '#!/bin/sh' \
+  'case "$2" in' \
+  '  */.react-sol-advisor-upgrade-terra.backup)' \
+  '    exec "$RSA_TEST_REAL_LN" "$@"' \
+  '    ;;' \
+  '  */.react-sol-advisor-upgrade-sol.backup)' \
+  '    cp "$RSA_TEST_SOL_BACKUP_SENTINEL" "$2"' \
+  '    exit 1' \
+  '    ;;' \
+  '  *)' \
+  '    exec "$RSA_TEST_REAL_LN" "$@"' \
+  '    ;;' \
+  'esac' > "$fake_ln" || record_failure "could not create fake ln wrapper"
+chmod 755 "$fake_ln" || record_failure "could not make fake ln wrapper executable"
+if toctou_output=$(RSA_TEST_REAL_LN="$real_ln" RSA_TEST_SOL_BACKUP_SENTINEL="$sol_backup_sentinel" PATH="$fake_bin:$PATH" sh "$installer" --target-dir "$toctou_target" --upgrade-known 2>&1); then
+  record_failure "guarded backup creation race was accepted"
+elif ! printf '%s\n' "$toctou_output" | grep -Fq "could not create guarded upgrade backups"; then
+  record_failure "guarded backup creation race omitted exact failure marker"
+elif ! cmp -s "$terra_fixture" "$toctou_target/$terra_file" || ! cmp -s "$sol_fixture" "$toctou_target/$sol_file"; then
+  record_failure "guarded backup creation race changed an accepted 0.1.1 destination"
+elif ! cmp -s "$sol_backup_sentinel" "$toctou_target/.react-sol-advisor-upgrade-sol.backup"; then
+  record_failure "guarded backup creation race did not preserve unknown Sol backup sentinel"
+elif [ -e "$toctou_target/.react-sol-advisor-upgrade-terra.backup" ] || [ -L "$toctou_target/.react-sol-advisor-upgrade-terra.backup" ]; then
+  record_failure "guarded backup creation race left the run-created Terra backup"
+elif stage_paths=$(find "$toctou_target" -maxdepth 1 -type f -name '.react-sol-advisor-upgrade-*' ! -name '*.backup' -print) && [ -n "$stage_paths" ]; then
+  record_failure "guarded backup creation race left staged upgrade files: $stage_paths"
+elif [ "$(role_and_upstream_signature "$toctou_target")" != "$toctou_before" ]; then
+  record_failure "guarded backup creation race changed a role or upstream sentinel"
+else
+  pass "guarded backup creation failure preserves concurrent backup and cleans owned state"
+fi
+
 # Exact accepted pair is the sole automatic-upgrade admission case.
 upgrade_target=$tmp_dir/upgrade-known
 prepare_stale_pair "$upgrade_target" || record_failure "could not prepare upgrade stale fixture"
@@ -155,6 +250,7 @@ if upgrade_output=$(sh "$installer" --target-dir "$upgrade_target" --upgrade-kno
   else
     pass "--upgrade-known replaces only both exact accepted 0.1.1 roles"
   fi
+  assert_no_upgrade_artifacts "successful known upgrade" "$upgrade_target"
 else
   record_failure "--upgrade-known rejected the exact accepted 0.1.1 role pair"
 fi
@@ -243,6 +339,7 @@ if idempotent_output=$(sh "$installer" --target-dir "$upgrade_target" --upgrade-
   else
     pass "current/current --upgrade-known is idempotent"
   fi
+  assert_no_upgrade_artifacts "idempotent current/current upgrade" "$upgrade_target"
 else
   record_failure "current/current --upgrade-known unexpectedly failed"
 fi
