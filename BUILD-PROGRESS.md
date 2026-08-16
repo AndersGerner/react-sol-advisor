@@ -279,3 +279,15 @@ reported version `2026.07.23-e383d2b` and catalog IDs
 `composer-2.5`, `gpt-5.6-luna-max`, and `cursor-grok-4.5-high`; no plugin-loading or
 agent-execution claim is made from those catalog checks. Native Luna runtime evidence
 is deterministic fixture evidence only; a live native spawn remains capability-dependent.
+
+### Draft PR and hosted CI
+
+- Draft PR: https://github.com/AndersGerner/react-sol-advisor/pull/5
+- Final pre-documentation head: `63b66b8f874ef7b68adf964b52cbbc6a72812866`
+- Base: `254b65a261308571a145b39826724af7f113b1a2`
+- The first hosted run exposed a real Ubuntu portability defect: the TMPDIR verifier
+  assumed `/private/tmp`. Commit `63b66b8` made the temporary root platform-aware while
+  preserving physical-path resolution and symlink refusal.
+- Hosted Verify run `31970711991` passed every workflow step at `63b66b8`. The PR was
+  explicitly returned to draft after GitHub initially reported it as ready; it is open,
+  draft, clean, and unmerged. No hosted review comments were present at handoff.
