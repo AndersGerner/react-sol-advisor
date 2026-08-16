@@ -2,6 +2,37 @@
 
 All notable changes to Sol Development Advisor will be documented in this file.
 
+## 0.3.0 - 2026-08-16
+
+### Changed
+
+- Consolidated the generic orchestration and delivery-profile policy into one shared
+  core. `React Sol Advisor` is now a legacy name alias, never a React-only mode.
+- Preserved the validated detached Luna / Max / Fast lane and added an optional native
+  Luna / Max role only when exact runtime and service-tier evidence is available.
+- Upgraded the managed Codex companion installation from Terra/Sol to Luna/Terra/Sol
+  with explicit known-version replacement, guarded rollback, symlink/path protection,
+  idempotence, and no upstream-role mutation.
+- Added a current Cursor desktop/editor plugin with Composer, Luna, and Grok roles,
+  exact user-configured model IDs, requested-versus-observed evidence, and safe
+  project/user agent configuration.
+
+### Added
+
+- Cross-client `ADVISOR ROUTE` declarations and client binding references.
+- Semantic pure-TypeScript, FLE-1007-like backend/data/worker, React, mixed, and legacy
+  alias fixtures with a structured acceptance oracle.
+- Current upstream adoption ledger and read-only newer-commit report.
+- Deterministic CI gates for Cursor schema/components, Codex runtime evidence, the
+  three-role upgrade, shared-core byte identity, and non-React eligibility.
+
+### Boundaries
+
+- Cursor CLI plugin support is not claimed without a live plugin-loading test.
+- Requested Cursor `readonly: true` behavior is not reported as enforced isolation.
+- Native Luna is not reported as Fast unless the effective service tier is deliberately
+  set or inherited and observed; detached Fast-only routing remains available.
+
 ## 0.2.0 - 2026-08-10
 
 ### Changed

@@ -1,306 +1,165 @@
-# Sol Development Advisor
+# Sol Development Advisor 0.3.0
 
-Sol Development Advisor is a production delivery advisor for Codex. Every
-implementation task carries the domain-neutral `production-delivery` core; React/UI,
-TypeScript backend, Postgres/data, and worker/integration profiles are selected only
-when their owned paths and observable acceptance require them. It routes eligible green
-work through user-visible GPT-5.6 Luna / Max / Fast app tasks, escalates amber and red work to
-a native GPT-5.6 Terra / High role, and requires a fresh Sol / High review at the
-defined commitment boundaries.
+Sol Development Advisor is one generic production-delivery advisor with Codex and
+Cursor execution adapters. Every implementation uses production-delivery; React/UI,
+TypeScript backend, Postgres/data, and worker/integration profiles are selected from
+owned code and acceptance criteria. A backend, data, provider, queue, or worker task
+does not need a React slice.
 
-The technical plugin identifier remains `react-sol-advisor`, and
-`@react-sol-advisor` remains the legacy technical invocation for compatibility. React,
-Next.js, React Native, and Expo delivery remain first-class specialist use cases; they
-are no longer a prerequisite for backend, data, worker, or mixed delivery work.
+React Sol Advisor is a legacy product-name and invocation alias. It has identical
+eligibility, risk, profiles, and lane semantics to Sol Development Advisor.
 
-This is a separately namespaced fork of the Sol Advisor project. Upstream attribution,
-baseline SHA, and licensing are recorded in [UPSTREAM.md](UPSTREAM.md).
+The compatibility identifiers remain stable:
 
-## What it does
+- repository: AndersGerner/react-sol-advisor
+- Codex plugin: react-sol-advisor@react-sol-advisor
+- direct invocation: @react-sol-advisor
 
-- **Economy** (default): bounded green work -> Luna / Max / Fast; amber work -> Sol
-  decomposition with Luna subparts and Terra core; red work -> Terra / High plus fresh
-  Sol review.
-- **Balanced**: green -> Luna / Max / Fast; amber -> Terra / High or `decomposed-mixed` only
-  when every extracted Luna workstream independently passes all green criteria; red ->
-  Terra / High plus fresh Sol review.
-- **Critical**: green -> Terra / High unless a purely mechanical Luna subtask
-  independently passes all green criteria; amber/red -> Terra / High.
-  All critical work receives a mandatory fresh Sol review. That review runs after parent
-  verification and includes any wholly or partly Luna-implemented mechanical diff.
-- **No silent fallback**: if a lane is unavailable, report the missing capability and
-  require explicit authorization before switching to a more expensive lane.
-- **Delivery profiles**: `production-delivery` is mandatory for every implementation
-  stream. React/UI, TypeScript backend, Postgres/data, and worker/integration profiles
-  are conditional, composable, and selected from owned paths plus acceptance—not from
-  risk or a blanket React assumption.
-- **Optional Linear intake**: read-only issue normalization when a connector is
-  available; full plugin usability from pasted requirements when it is not.
-- **Capability-gated archiving**: archive accepted child tasks only when a supported
-  operation exists, otherwise return a safe `THREADS_READY_TO_ARCHIVE` list.
+The parent session remains the outer owner of architecture, Linear, worktrees,
+publication, review, merge, closeout, and deployment boundaries.
 
-## Installation
+## Shared route
 
-### Install from GitHub
+Before a client-specific call, emit one complete declaration:
 
-Add the repository as a Codex marketplace and install the plugin:
+    ADVISOR ROUTE
+    CLIENT: codex | cursor
+    POLICY: economy | balanced | critical
+    RISK: green | amber | red
+    IMPLEMENTATION MODE:
+    - codex-luna-native
+    - codex-luna-detached
+    - codex-terra-native
+    - cursor-composer
+    - cursor-luna
+    - cursor-grok
+    - parent-only
+    - decomposed-mixed
+    REASONS:
+    OWNERSHIP:
+    DELIVERY PROFILES:
+    ESCALATION TRIGGERS:
+    REVIEW:
+    PR POLICY:
+    MODEL EVIDENCE:
 
-```sh
-codex plugin marketplace add AndersGerner/react-sol-advisor --ref main
-codex plugin add react-sol-advisor@react-sol-advisor
-```
+The route records requested and observed model/tier values separately. There is no
+silent client, model, tier, or profile fallback.
 
-Upstream Sol Advisor may remain installed as a separate plugin.
+## Codex adapter
 
-### Install native companion roles when needed
+The existing detached codex-luna-detached lane remains the Fast-capable path. It
+retains the validated project/schema preflight, real thread/host identity, exact
+worktree discovery, preferred wait_threads, bounded exact-thread read_thread
+fallback, same-thread correction, parent diff verification, and explicit archive proof.
+Fast is a service tier, not a property of the model name or prompt. If the tier cannot
+be set and observed, the lane stops with LUNA FAST MODE: blocked.
 
-Green Luna-only work does not require native companion roles. Install them when you
-want the Terra escalation lane or fresh Sol reviewer:
+The optional native role is:
 
-```sh
-plugin_dir="$(
-  codex plugin list --json |
-    jq -r '.installed[] |
-      select(.pluginId == "react-sol-advisor@react-sol-advisor") |
-      .source.path'
-)"
+    react_sol_advisor_luna_implementer
+    model: gpt-5.6-luna
+    reasoning: max
 
-test -n "$plugin_dir"
-test -d "$plugin_dir"
+Native Luna is eligible only when exact role/model/effort and deliberate service-tier
+evidence are observable. It is bounded generic implementation work and never owns
+architecture, PRs, Linear, publication, review completion, merge, closeout, deployment,
+or external state. Amber/red work escalates to the namespaced Terra / High role; red and
+critical boundaries receive a fresh Sol / High review.
 
-sh "$plugin_dir/scripts/install-agents.sh"
-sh "$plugin_dir/scripts/install-agents.sh" --check
-# Explicitly replace only the exact accepted 0.1.1 Terra/Sol pair:
-sh "$plugin_dir/scripts/install-agents.sh" --upgrade-known
-```
+Install or verify all three managed roles:
 
-The installer:
+    plugin_dir="$(pwd)/plugins/react-sol-advisor"
+    sh "$plugin_dir/scripts/install-agents.sh" --target-dir "$HOME/.codex/agents"
+    sh "$plugin_dir/scripts/install-agents.sh" --target-dir "$HOME/.codex/agents" --check
+    # Explicitly upgrade only the accepted 0.1.1 Terra/Sol pair and add native Luna:
+    sh "$plugin_dir/scripts/install-agents.sh" --target-dir "$HOME/.codex/agents" --upgrade-known
 
-- Installs only `react-sol-advisor-terra-implementer.toml` and
-  `react-sol-advisor-sol-reviewer.toml`.
-- Default install and `--check` never overwrite roles. `--upgrade-known` is the sole
-  replacement path and accepts only the exact known 0.1.1 Terra/Sol pair; mixed,
-  missing, modified, nonregular, symlinked, unreadable, and retired-Luna states fail
-  before mutation.
-- Stages both current templates, acquires one target-local ownership-verifiable upgrade
-  lock before final classification, and tracks per-role publication ownership. A
-  concurrent loser never rolls back the winner; rollback revalidates displaced content
-  and restores unknown concurrent bytes without clobbering.
-- Rolls back a failed pair replacement, removes owned lock/transaction artifacts, and
-  is idempotent for an exact current/current pair. An unknown or stale lock fails closed
-  for manual inspection rather than being removed automatically.
-- Rejects the unsupported `react-sol-advisor-luna-implementer.toml`; Luna remains an
-  app-task lane.
-- Never creates native Luna or reads, changes, or deletes upstream companion-role
-  files.
+The installer changes only the three namespaced files, refuses unknown or modified
+managed roles, protects symlinked paths, preserves upstream sol-advisor-* files,
+publishes through a guarded transaction, rolls back on failure/signal, and is
+idempotent. Start a fresh Codex task after installing or updating roles.
 
-Start a **fresh Codex task** after installing or updating native roles so custom-agent
-discovery sees the current profiles.
+Runtime evidence reports exact role/model/effort and includes requested/observed service
+tier fields only when the rollout exposes them. Missing tier metadata is not upgraded
+into a Fast claim.
 
-### Local checkout development
+## Cursor adapter
 
-```sh
-git clone https://github.com/AndersGerner/react-sol-advisor
-cd react-sol-advisor
-codex plugin marketplace add "$(pwd)"
-codex plugin add react-sol-advisor@react-sol-advisor
-```
+The Cursor package is at
+plugins/cursor-sol-development-advisor/. It uses the current Cursor Plugin manifest at
+.cursor-plugin/plugin.json with skills/, agents/, commands/, and rules/. The bundled
+roles are:
 
-## Usage
+- Composer — bounded routine work;
+- Luna — specialist implementation/review;
+- Grok — high-complexity backend, data, worker, integration, and advice work.
 
-Use the plugin by mentioning the compatibility invocation `@react-sol-advisor` or
-selecting the **Sol Development Advisor** skill in Codex. State the desired policy,
-owned slice, and observable acceptance when they matter:
+Bundled agents use model: inherit; no guessed IDs are hardcoded. Configure exact
+current IDs from the Cursor model picker/catalog with the safe flow:
 
-```text
-@react-sol-advisor In this Next.js repository, add an accessible customer-status filter
-that persists in the URL and follows the existing vehicle-filter implementation. Use
-economy mode. Do not create a PR; leave an accepted commit and verification report.
-```
+    python3 plugins/cursor-sol-development-advisor/scripts/configure-cursor-agents.py \
+      --scope project \
+      --workspace "$PWD" \
+      --config /path/to/exact-cursor-models.json
+    # Copy CONFIRMATION_TOKEN from the preview, then rerun with --confirm TOKEN.
 
-For balanced or critical work, or to require a final Sol review, ask explicitly:
+The JSON must contain exactly composer, luna, and grok string identifiers. The flow
+supports project (.cursor/agents/) and user (~/.cursor/agents/) scopes, previews before
+writing, requires an explicit confirmation token, writes managed files atomically,
+records per-file hashes, refuses symlinks and unknown managed changes, preserves
+unrelated agents, supports safe update/uninstall, and reports the required Cursor
+reload. Pass --observed-models only with separately observed runtime values; --report
+shows requested versus observed evidence. Frontmatter alone never proves the observed
+model.
 
-```text
-@react-sol-advisor Implement FLE-789 using critical mode. This changes tenant
-authorization and a shared API contract. Keep Sol on architecture, use Terra for
-implementation, require a fresh Sol final review, and do not create a PR until the final
-verdict is SHIP.
-```
+The Luna agent requests readonly: true, but that request is not proof of enforced
+isolation. Consequential reviews capture before/after state or require independently
+observed runtime evidence. This build targets Cursor desktop/editor plugin discovery;
+Cursor CLI support is not claimed because plugin loading was not live-tested here.
 
-See [plugins/react-sol-advisor/examples/invocations.md](plugins/react-sol-advisor/examples/invocations.md)
-for more invocation patterns and [plugins/react-sol-advisor/examples/luna-task-packet.md](plugins/react-sol-advisor/examples/luna-task-packet.md)
-for an example Luna task packet.
+## Generic examples
 
-## Routing policy
+Both Sol Development Advisor and React Sol Advisor accept these without a React
+confirmation gate:
 
-Before every delegation the primary session emits the following route block:
+    Add a deterministic TypeScript provider-error classifier with table-driven tests.
+    Use production-delivery plus typescript-backend-delivery.
 
-```text
-ROUTING DECISION
-POLICY: economy | balanced | critical
-RISK: green | amber | red
-LANE: luna-app-task | terra-native | sol-parent-only | decomposed-mixed
-REASONS:
-- concise evidence-based reason
-OWNERSHIP:
-- exact files/modules or bounded responsibility
-DELIVERY PROFILES:
-- production-delivery always, plus selected conditional specialist profiles
-ESCALATION TRIGGERS:
-- exact conditions that stop or change the lane
-PR POLICY: none | commit-only | draft-after-acceptance
-```
+    Implement pg-boss admission, database ownership metadata, provider-request state,
+    worker safeguards, and orphan reconciliation. Use production-delivery plus TypeScript
+    backend, Postgres/data, and worker/integration. Treat consistency as amber or red and
+    do not route the irreducible core through a routine green lane.
 
-The full green/amber/red criteria and policy mapping are in
-[plugins/react-sol-advisor/skills/orchestration/references/model-routing.md](plugins/react-sol-advisor/skills/orchestration/references/model-routing.md).
+For a React URL filter, select react-production-delivery because the owned UI slice
+requires it. For a mixed React/backend request, decompose into non-overlapping slices
+and select profiles per slice; backend ownership does not inherit React requirements.
 
-Representative non-React and mixed invocations retain the same compatibility command:
+## Upstream references
 
-```text
-@react-sol-advisor Add a pure deterministic TypeScript mapper with table-driven tests.
-Use economy mode, production-delivery plus TypeScript backend, and leave an evidence
-handoff without creating a PR.
+The listed upstream commits and their adopted/adapted/rejected decisions are recorded
+in docs/upstream-adoption.md. Run the read-only report to inspect newer fetched
+upstream commits without merging them:
 
-@react-sol-advisor Add an idempotent tenant-safe Postgres backfill and verify its query
-plan. Use production-delivery plus Postgres/data; do not select React for database-only
-owned paths.
-
-@react-sol-advisor Add retry classification and reconciliation for an established
-provider worker. Use production-delivery plus worker/integration with deterministic
-queue and provider fakes.
-
-@react-sol-advisor Implement pg-boss admission, ownership, and orphan reconciliation.
-Use the Postgres/data and worker/integration profiles. Decompose bounded helpers from
-the Terra-owned consistency core; require a fresh Sol review if routing is red.
-
-@react-sol-advisor Add a React URL filter and its established REST backend endpoint.
-Split non-overlapping UI and backend workstreams; use profiles per workstream and do
-not require the React profile for the backend-owned files.
-```
-
-## Luna task monitoring
-
-Every Luna turn is Fast-only. Before initial creation, the plugin resolves the model
-catalog's advertised Fast tier ID and requires the task API to expose a real
-`serviceTier` setter plus observable effective-tier metadata for both `create_thread`
-and `send_message_to_thread`. It explicitly reasserts Luna / Max / Fast on every
-correction. The Luna model name and prompt text are not Fast-mode evidence. If Fast
-cannot be set and confirmed, the lane stops with `LUNA FAST MODE: blocked` before the
-affected call; it does not run on the default tier.
-
-Luna monitoring is capability-adaptive. When `wait_threads` is exposed with a usable
-schema, the preferred path is `wait_threads -> read_thread -> independent child
-worktree/diff verification`. `wait_threads` is preferred, not mandatory.
-
-When `wait_threads` is absent, the supported fallback requires `list_projects`,
-`list_threads`, `create_thread`, `read_thread`, and `send_message_to_thread`. It resolves
-the real `threadId` and `hostId`, then uses bounded exact-thread
-`read_thread(threadId, hostId)` polling. `list_threads` is used only for bounded identity
-discovery when creation returned a setup handle, never as a post-identity completion
-monitor.
-
-Before creation, inspect the actual project and environment schemas. The proven
-`list_projects` fields are `projectKind` and `supportsWorktrees`; do not rely on the
-absent `isGitRepository` field. Independently confirm repository Git state and the exact
-base/ref, and request `{type: "worktree"}` only when worktrees are explicitly supported.
-If the schema exposes no safe environment for the exact project, fail closed.
-
-The initial child packet contains only pre-creation values such as project identity,
-returned schema fields, requested environment, base/ref, ownership, interfaces, and
-verification. Real thread/host identity and monitoring mode are populated afterward in a
-separate parent-owned lifecycle record. Those identities are sufficient to begin
-monitoring while the child worktree remains unresolved. The first exact read, including
-the read after `wait_threads`, may reveal the worktree; the parent then independently
-verifies it and pins subsequent reads to that same worktree. Exact worktree evidence is
-required before correction, acceptance, PR authorization, or dependent-task creation.
-Existing identity belongs in a correction message, not the initial packet.
-
-A turn is accepted only when its latest status is `completed`, a readable final
-assistant handoff exists for that turn, the actual child worktree and complete diff have
-been independently inspected, and parent-run verification passes. Thread `idle` is not
-required; `active / completed` is valid when those gates pass. `idle` without a newly
-completed turn and `notLoaded` are not completion evidence. Polling is bounded and fails
-closed; there is no background callback.
-
-Corrections reuse the same real thread, host, and child worktree, explicitly pass
-`model = gpt-5.6-luna`, `thinking = max`, and the catalog-advertised Fast `serviceTier`
-on every correction call, confirm the effective tier, record returned routing metadata,
-and produce a new completed turn ID plus an updated handoff. If
-`list_projects` does not return the exact intended path, add or open the folder as a
-project in the Codex app and start a fresh task in that project. The plugin does not
-invent project IDs, use Computer Use for registration, or substitute another repository.
-
-## Native companion roles
-
-The fork installs two custom-agent TOML files with pinned models and reasoning effort:
-
-- `react_sol_advisor_terra_implementer` — GPT-5.6 Terra / High for the escalation
-  implementation lane.
-- `react_sol_advisor_sol_reviewer` — GPT-5.6 Sol / High, requested read-only, for fresh
-  final review.
-
-Do not add per-spawn model or reasoning overrides. Verify the actual role, model,
-effort, sandbox, and permission profile before accepting native results. The host may
-broaden the reviewer's requested sandbox; the parent must apply the behavioral
-read-only rules in the orchestration contract rather than claiming enforced isolation.
+    sh scripts/report-upstream.sh upstream
 
 ## Verification
 
-Run the complete local verification suite before accepting changes:
+Run the full deterministic suite before accepting or publishing a change:
 
-```sh
-sh plugins/react-sol-advisor/scripts/verify.sh
-sh plugins/react-sol-advisor/scripts/verify-hardening.sh
-sh plugins/react-sol-advisor/scripts/verify-contracts.sh
-sh plugins/react-sol-advisor/scripts/verify-luna-thread-contracts.sh
-sh plugins/react-sol-advisor/scripts/verify-tmpdir-portability.sh
-sh plugins/react-sol-advisor/scripts/verify-generalization.sh
-sh plugins/react-sol-advisor/scripts/verify-agent-upgrade.sh
-git diff --check
-```
+    sh plugins/react-sol-advisor/scripts/verify.sh
+    sh plugins/react-sol-advisor/scripts/verify-hardening.sh
+    sh plugins/react-sol-advisor/scripts/verify-contracts.sh
+    sh plugins/react-sol-advisor/scripts/verify-luna-thread-contracts.sh
+    sh plugins/react-sol-advisor/scripts/verify-tmpdir-portability.sh
+    sh plugins/react-sol-advisor/scripts/verify-generalization.sh
+    sh plugins/react-sol-advisor/scripts/verify-agent-upgrade.sh
+    sh plugins/react-sol-advisor/scripts/verify-cross-client.sh
+    python3 plugins/react-sol-advisor/scripts/verify-cursor-agents.py
+    python3 plugins/react-sol-advisor/scripts/verify-codex-adapter.py
+    python3 plugins/react-sol-advisor/scripts/verify-docs.py
+    git diff --check
 
-The GitHub Actions workflow runs all seven verifier scripts plus a base-to-head
-whitespace check on pushes to `main` and `feat/*` branches and on pull requests targeting
-`main`.
-
-The suite checks:
-
-- Manifest and marketplace identity
-- Exact TOML role pins
-- Installer path, symlink, conflict, rollback, and retired-Luna safety
-- Runtime role/model/effort validation and observed isolation evidence
-- Routing, production-delivery, and conditional specialist-profile contracts
-- Safe known-version native-role upgrade, rollback, idempotence, and upstream/Luna
-  non-interference
-- Fast-only Luna routing, capability-adaptive monitoring, exact-turn completion, correction identity,
-  project registration, PR, and explicit archive evidence
-- Optional Linear intake
-- Stale identifiers and relative Markdown links
-
-## Troubleshooting
-
-- **Missing `wait_threads`**: use the bounded exact-thread `read_thread` fallback only
-  when all five baseline app-task operations are exposed.
-- **Missing fallback capability**: the plugin stops the Luna lane and reports the exact
-  missing operation. Provide explicit authorization before switching to Terra.
-- **Fast mode unavailable or unobservable**: the plugin returns
-  `LUNA FAST MODE: blocked` before the affected Luna call. It does not infer Fast from
-  the model name, prompt, config default, or earlier turn.
-- **Project path missing from `list_projects`**: add or open the folder as a project in
-  the Codex app and start a fresh task in that project.
-- **Unsafe project environment**: inspect the returned `projectKind`,
-  `supportsWorktrees`, and `create_thread` environment schema; do not infer support from
-  an absent field or invent a local fallback.
-- **Stale native roles**: run `install-agents.sh --check` to detect missing, stale, or
-  conflicting role files.
-- **Retired native Luna file**: remove the namespaced
-  `react-sol-advisor-luna-implementer.toml` manually; the installer will not delete a
-  user-owned file.
-- **Linear unavailable**: continue from pasted requirements; the plugin reports
-  `LINEAR: unavailable; proceeded from supplied requirements`.
-- **No archive operation**: the parent returns a `THREADS_READY_TO_ARCHIVE` list instead
-  of simulating archive behavior.
-
-## License
-
-MIT. See [LICENSE](LICENSE) and [UPSTREAM.md](UPSTREAM.md) for attribution.
+The semantic oracle includes pure TypeScript, the exact FLE-1007-like non-React
+backend/data/worker shape, schema migration, React, mixed, and legacy-alias cases. CI
+runs every deterministic gate and does not merge pull requests.

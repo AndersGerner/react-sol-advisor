@@ -231,3 +231,51 @@ or a final independent review.
 | Documentation | README, changelog, and upstream attribution updated for the compatibility-preserving product generalization | Complete locally |
 | Focused acceptance | `verify-generalization.sh` and `verify-agent-upgrade.sh` | Complete locally: both passed |
 | Hosted CI / independent final review | No hosted run or final review is asserted by this ledger | Not claimed |
+
+## 0.3.0 cross-client build
+
+This section records the Prompt 3 implementation in the isolated branch
+`codex/sol-development-advisor-030`. The accepted ancestor and current base were both
+verified before implementation:
+
+- accepted ancestor: `254b65a261308571a145b39826724af7f113b1a2`
+- current `origin/main`: `254b65a261308571a145b39826724af7f113b1a2`
+- current upstream reference inspected: `37b75cad535abdd46531f0227483a8842d045ab8`
+- isolated worktree: `/Users/andersgerner/Development/react-sol-advisor-worktrees/sol-development-advisor-030`
+
+### Red-green evidence
+
+| Phase | Evidence | Result |
+|---|---|---|
+| Red | Cross-client oracle against the pre-build 0.2.1 package | Refused the missing generic 0.3.0 manifest/core contract |
+| Red | Cursor agent acceptance before the setup flow existed | Refused the missing exact-ID configuration path |
+| Red | Codex adapter acceptance before the third role/runtime binding existed | Refused the missing native Luna and adapter evidence |
+| Green | Cross-client, Cursor, Codex, docs/schema, profile, and lifecycle gates | All pass locally after implementation |
+
+### Implemented decisions
+
+- One byte-identical generic core is canonical under the Codex orchestration references;
+  the Cursor core is generated from it and SHA-256 checked.
+- `React Sol Advisor` remains a compatibility alias and never selects React eligibility.
+- The FLE-1007-like backend/data/worker fixture is non-React, eligible, amber, and
+  selects TypeScript backend, Postgres/data, and worker/integration profiles without a
+  confirmation or blocked result.
+- The Codex adapter preserves the detached Luna / Max / Fast lifecycle, adds an
+  evidence-gated native Luna role, and retains Terra / High and fresh Sol review.
+- The three-role installer has exact known-stale upgrade scope, idempotence,
+  coexistence and symlink refusal, transaction rollback, and signal rollback tests.
+- The Cursor package uses the current official manifest/marketplace schema URLs and
+  current agent frontmatter. Exact IDs are accepted only from user configuration;
+  requested and observed values remain separate.
+
+### Local verification recorded for this build
+
+`verify.sh`, `verify-hardening.sh`, `verify-contracts.sh`,
+`verify-luna-thread-contracts.sh`, `verify-tmpdir-portability.sh`,
+`verify-generalization.sh`, `verify-agent-upgrade.sh`,
+`verify-cross-client.sh`, `verify-cursor-agents.py`, `verify-codex-adapter.py`,
+`verify-docs.py`, and `git diff --check` are required gates. The local Cursor binary
+reported version `2026.07.23-e383d2b` and catalog IDs
+`composer-2.5`, `gpt-5.6-luna-max`, and `cursor-grok-4.5-high`; no plugin-loading or
+agent-execution claim is made from those catalog checks. Native Luna runtime evidence
+is deterministic fixture evidence only; a live native spawn remains capability-dependent.

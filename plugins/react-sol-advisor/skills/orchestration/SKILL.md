@@ -3,6 +3,37 @@ name: orchestration
 description: "Sol Development Advisor Luna-first orchestration: green economy work routes to GPT-5.6 Luna / Max / Fast app tasks; amber/red or balanced/critical work escalates to Terra / High; fresh Sol review at commitment boundaries; no silent lane fallback."
 ---
 
+# 0.3.0 shared generic core and client route
+
+Read [the shared core](references/shared-core.md), [the Codex adapter](references/codex-adapter.md),
+and [the Cursor adapter](references/cursor-adapter.md) before any client-specific call.
+`React Sol Advisor` is a legacy alias for the same generic Sol Development Advisor
+implementation. Profile selection comes from owned code and acceptance; the invocation
+phrase does not select React or a model.
+
+```text
+ADVISOR ROUTE
+CLIENT: codex | cursor
+POLICY: economy | balanced | critical
+RISK: green | amber | red
+IMPLEMENTATION MODE:
+- codex-luna-native | codex-luna-detached | codex-terra-native
+- cursor-composer | cursor-luna | cursor-grok
+- parent-only | decomposed-mixed
+REASONS:
+OWNERSHIP:
+DELIVERY PROFILES:
+ESCALATION TRIGGERS:
+REVIEW:
+PR POLICY:
+MODEL EVIDENCE:
+```
+
+Every route reports requested and observed model/tier values separately. A missing
+runtime capability stops the selected lane; there is no silent client, model, tier, or
+React fallback. The parent remains the owner of architecture, Linear, worktrees,
+publication, review, merge, closeout, and deployment boundaries.
+
 # Sol Development Advisor Orchestration
 
 Act as the architect in the primary Codex session. Own the user's intent, routing
@@ -104,7 +135,7 @@ before switching to a more expensive lane.
 
 ## Preflight the native companion custom agents
 
-The two role files are user-owned native custom-agent TOML files. Installing or
+The three role files are user-owned native custom-agent TOML files. Installing or
 updating the plugin does not automatically register them. Install them separately and
 start a fresh Codex task so native discovery sees the current profiles.
 
@@ -120,18 +151,19 @@ complete steps 3-4 before accepting its result.
    sh "$installer" --check
    ~~~
 
-   It must exit zero. This proves Terra and Sol match the shipped templates exactly.
+   It must exit zero. This proves Luna, Terra, and Sol match the shipped templates exactly.
    If the check reports a missing, stale, unsafe, or conflicting file, stop the
    affected lane. Give the user the installer path and reported destination. Never work
    around failure with another agent, model, or effort.
 
-2. Inspect the native spawn tool's available `agent_type` entries. Both exact names
+2. Inspect the native spawn tool's available `agent_type` entries. All exact names
    must be exposed:
 
+   - `react_sol_advisor_luna_implementer`
    - `react_sol_advisor_terra_implementer`
    - `react_sol_advisor_sol_reviewer`
 
-   If either is missing, tell the user to install/check the companion files, start a
+   If any is missing, tell the user to install/check the companion files, start a
    fresh task, and update Codex if the name remains unavailable. Do not substitute a
    built-in or similarly named role.
 
@@ -150,7 +182,8 @@ complete steps 3-4 before accepting its result.
 
    The helper's allowlisted output is the authoritative local fallback for omitted
    model and effort. If public and local values both exist, they must agree. Accepted
-   values are Terra / high for implementation and Sol / high for review. Missing,
+   values are Luna / max for bounded green work, Terra / high for escalation, and Sol /
+   high for review. Missing,
    inconsistent, unavailable, or unobservable routing stops that lane.
 
 4. For the reviewer, capture the observed sandbox policy type and permission profile
@@ -288,7 +321,9 @@ subparts do not independently satisfy every green criterion, and critical work e
 explicitly identified purely mechanical Luna subtasks that independently pass every
 green criterion. Balanced green work remains in the Luna lane. A bounded queue lease,
 orphan-reconciliation transition, or unsettled stale-response race remains Terra-owned
-amber work. There is no second native implementation or fallback lane.
+amber work. There is no unapproved native implementation or silent fallback lane.
+Native Luna is an optional, separately evidence-gated bounded lane; Terra remains the
+required native escalation route when Luna's constraints are not satisfied.
 
 Spawn exactly:
 

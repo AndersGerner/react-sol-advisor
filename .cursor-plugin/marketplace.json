@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cursor/plugins/main/schemas/marketplace.schema.json",
+  "name": "react-sol-advisor",
+  "owner": {"name": "Anders Gerner", "url": "https://github.com/AndersGerner"},
+  "metadata": {
+    "description": "Sol Development Advisor Cursor plugins",
+    "version": "0.3.0"
+  },
+  "plugins": [
+    {
+      "name": "sol-development-advisor",
+      "source": "./plugins/cursor-sol-development-advisor"
+    }
+  ]
+}
