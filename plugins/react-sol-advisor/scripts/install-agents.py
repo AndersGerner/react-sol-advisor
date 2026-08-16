@@ -154,6 +154,7 @@ class Transaction:
         self.published_replace: list[str] = []
         self.committed = False
         self.previous_signal_handlers: dict[int, object] = {}
+        self.preserve_transaction = False
 
     def install_signal_handlers(self) -> None:
         self.previous_signal_handlers = {
@@ -246,7 +247,19 @@ class Transaction:
             fail(f"private {role} displaced slot already exists: {displaced}")
         os.replace(destination, displaced)
         if not exact_file(displaced, OLD_DIGESTS[role]):
-            fail(f"{role} displacement failed closed after revalidation")
+            # A concurrent writer may have replaced the destination between the
+            # preflight classification and os.replace(). Never discard those bytes:
+            # restore them when the public slot is still empty, otherwise preserve
+            # the private recovery transaction and its lock for operator inspection.
+            if lstat(destination) is None:
+                try:
+                    os.replace(displaced, destination)
+                except OSError as error:
+                    self.preserve_transaction = True
+                    fail(f"{role} displacement revalidation could not restore the unknown destination: {error}")
+                fail(f"{role} displacement revalidation failed; restored unknown destination")
+            self.preserve_transaction = True
+            fail(f"{role} displacement revalidation failed; preserved private recovery transaction")
         # From this point the old destination has been transaction-owned even if the
         # new publication fails; rollback must restore the displaced inode.
         self.published_replace.append(role)
@@ -293,12 +306,14 @@ class Transaction:
             if classify(destination, template, role) != "known-stale-0.1.1":
                 rollback_ok = False
         if self.transaction is not None and self.transaction.exists():
-            if rollback_ok:
+            if rollback_ok and not self.preserve_transaction:
                 shutil.rmtree(self.transaction)
             else:
                 print(f"ERROR: private recovery transaction preserved: {self.transaction}", file=sys.stderr)
         if self.lock is not None and self.lock.exists():
-            if rollback_ok and self.lock.is_dir() and not os.path.islink(self.lock):
+            if self.preserve_transaction:
+                print(f"ERROR: upgrade lock retained with private recovery transaction: {self.lock}", file=sys.stderr)
+            elif rollback_ok and self.lock.is_dir() and not os.path.islink(self.lock):
                 shutil.rmtree(self.lock)
             else:
                 rollback_ok = False
@@ -307,6 +322,8 @@ class Transaction:
                 self.target.rmdir()
             except OSError:
                 pass
+        if self.preserve_transaction:
+            raise InstallerError("upgrade rollback preserved a private recovery transaction; inspect it before retrying")
         if not rollback_ok:
             raise InstallerError("upgrade rollback failed closed; inspect the private recovery transaction")
 
