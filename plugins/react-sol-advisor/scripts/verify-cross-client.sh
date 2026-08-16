@@ -1,5 +1,4 @@
 #!/bin/sh
 set -eu
-
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
-exec python3 "$script_dir/install-agents.py" "$@"
+exec python3 "$script_dir/verify-cross-client.py"

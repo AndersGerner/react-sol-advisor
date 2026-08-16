@@ -67,6 +67,20 @@ profile, and fresh-review outcomes; prose elsewhere cannot satisfy a missing fie
       "fresh_sol_review_required": false
     },
     {
+      "id": "fle-1007-like-backend-data-worker",
+      "policy": "economy",
+      "risk": "amber",
+      "lane": "decomposed-mixed",
+      "profiles": [
+        "production-delivery",
+        "typescript-backend-delivery",
+        "postgres-data-delivery",
+        "worker-integration-delivery"
+      ],
+      "ownership": "pg-boss admission, database ownership metadata, provider-request state, worker safeguards, and orphan reconciliation",
+      "fresh_sol_review_required": false
+    },
+    {
       "id": "schema-migration",
       "policy": "balanced",
       "risk": "red",

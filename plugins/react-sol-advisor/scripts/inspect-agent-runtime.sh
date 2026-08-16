@@ -98,6 +98,10 @@ IFS= read -r rollout_file < "$matches_file" || fail "could not read the matched 
 # evidence: the host may broaden the reviewer's requested read-only sandbox, and the
 # parent contract decides whether behavioral read-only review is acceptable.
 role_pins='{
+  "react_sol_advisor_luna_implementer": {
+    "model": "gpt-5.6-luna",
+    "effort": "max"
+  },
   "react_sol_advisor_terra_implementer": {
     "model": "gpt-5.6-terra",
     "effort": "high"
@@ -133,6 +137,8 @@ if ! jq -ce -s \
     [ $turns[] | ((.sandbox_policy? // {}) | .type? | string_or_null) ] as $sandbox_types |
     [ $turns[] | ((.permission_profile? // {}) | .type? | string_or_null) ] as $permission_types |
     [ $turns[] | (.cwd? | string_or_null) ] as $cwds |
+    [ $turns[] | ((.service_tier? // .serviceTier? // .effective_service_tier? // .effectiveServiceTier?) | string_or_null) ] as $service_tiers |
+    [ $turns[] | ((.requested_service_tier? // .requestedServiceTier?) | string_or_null) ] as $requested_service_tiers |
     if $session_thread_id == null or $session_thread_id != $expected_thread_id then
       error("session metadata does not identify the requested thread")
     elif $agent_role == null or $agent_role == "" then
@@ -163,6 +169,10 @@ if ! jq -ce -s \
       error("model \($models[0]) does not match role pin for \($agent_role)")
     elif $efforts[0] != $expected_pins[$agent_role].effort then
       error("effort \($efforts[0]) does not match role pin for \($agent_role)")
+    elif (($service_tiers | map(select(. != null)) | unique | length) > 1) then
+      error("conflicting observed service tiers")
+    elif (($requested_service_tiers | map(select(. != null)) | unique | length) > 1) then
+      error("conflicting requested service tiers")
     else
       {
         thread_id: $session_thread_id,
@@ -174,7 +184,9 @@ if ! jq -ce -s \
         effort: $efforts[0],
         sandbox_policy_type: $sandbox_types[0],
         permission_profile_type: $permission_types[0],
-        cwd: $cwds[0]
+        cwd: $cwds[0],
+        requested_service_tier: ($requested_service_tiers | map(select(. != null)) | .[0] // null),
+        observed_service_tier: ($service_tiers | map(select(. != null)) | .[0] // null)
       }
     end
   end

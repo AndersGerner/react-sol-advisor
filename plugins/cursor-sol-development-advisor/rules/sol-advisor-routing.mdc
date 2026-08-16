@@ -1,0 +1,10 @@
+---
+description: Keep Sol Development Advisor routing generic, profile-aware, and evidence-based.
+alwaysApply: true
+---
+
+Use one generic Sol Development Advisor core. `React Sol Advisor` is a legacy alias.
+Select profiles from owned code and acceptance, never from the invocation phrase. Emit
+`ADVISOR ROUTE` before client-specific work. Report requested and observed model/tier
+metadata separately. Do not treat requested read-only behavior as enforced isolation,
+and do not claim Cursor CLI plugin support without a live plugin test.

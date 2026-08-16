@@ -1,117 +1,56 @@
 #!/bin/sh
-# Focused consistency checks for the routing and native-role contracts.
-
+# Focused shared and adapter contract checks.
 set -eu
 
-script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd) || exit 1
-plugin_dir=$(CDPATH= cd "$script_dir/.." && pwd) || exit 1
-repo_dir=$(CDPATH= cd "$plugin_dir/../.." && pwd) || exit 1
-skill=$plugin_dir/skills/orchestration/SKILL.md
-role_contracts=$plugin_dir/skills/orchestration/references/role-contracts.md
-model_routing=$plugin_dir/skills/orchestration/references/model-routing.md
-installer=$script_dir/install-agents.sh
-test_support=$script_dir/verifier-test-support.sh
-luna_thread_verifier=$script_dir/verify-luna-thread-contracts.sh
+fail() { printf '%s\n' "FAIL: $*" >&2; printf '%s\n' "::error::$*" >&2; exit 1; }
+pass() { printf '%s\n' "PASS: $*"; }
+script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
+plugin_dir=$(CDPATH= cd "$script_dir/.." && pwd)
+repo_dir=$(CDPATH= cd "$plugin_dir/../.." && pwd)
 manifest=$plugin_dir/.codex-plugin/plugin.json
-readme=$repo_dir/README.md
+skill=$plugin_dir/skills/orchestration/SKILL.md
+profiles=$plugin_dir/skills/orchestration/references/delivery-profiles.md
+roles=$plugin_dir/skills/orchestration/references/role-contracts.md
+codex=$plugin_dir/skills/orchestration/references/codex-adapter.md
+cursor=$plugin_dir/skills/orchestration/references/cursor-adapter.md
 changelog=$repo_dir/CHANGELOG.md
 workflow=$repo_dir/.github/workflows/verify.yml
 
-fail() {
-  printf '%s\n' "FAIL: $*" >&2
-  printf '%s\n' "::error::$*" >&2
-  exit 1
-}
+[ "$(jq -r '.version' "$manifest")" = "0.3.0" ] || fail "manifest version is not 0.3.0"
+grep -Fq '## 0.3.0 - 2026-08-16' "$changelog" || fail "changelog does not record 0.3.0"
+grep -Fq '## 0.2.1 - 2026-08-10' "$changelog" || fail "changelog no longer retains 0.2.1 history"
+grep -Fq '## 0.2.0 - 2026-08-10' "$changelog" || fail "changelog no longer retains 0.2.0 history"
+grep -Fq '## 0.1.1 - 2026-08-08' "$changelog" || fail "changelog no longer retains 0.1.1 history"
+pass "version and release history"
 
-for required in "$skill" "$role_contracts" "$model_routing" "$installer" "$test_support" "$luna_thread_verifier" "$manifest" "$readme" "$changelog" "$workflow"; do
-  [ -f "$required" ] || fail "missing contract file: $required"
+for file in "$skill" "$roles" "$codex" "$cursor"; do
+  [ -f "$file" ] || fail "missing contract file: $file"
+  grep -Fq 'production-delivery' "$file" || fail "contract omits production-delivery: $file"
+  grep -Fq 'ADVISOR ROUTE' "$file" || fail "contract omits ADVISOR ROUTE: $file"
 done
-. "$test_support"
+grep -Fq 'production-delivery' "$profiles" || fail "delivery profile matrix omits production-delivery"
+grep -Fq 'TypeScript is not auto-React' "$profiles" || fail "delivery profile matrix omits the generic TypeScript rule"
+pass "shared route and profile contracts"
 
-[ "$(jq -r '.version' "$manifest")" = '0.2.1' ] ||
-  fail "manifest version is not 0.2.1"
-grep -Fq '## 0.2.1 - 2026-08-10' "$changelog" ||
-  fail "changelog does not record version 0.2.1"
-grep -Fq '## 0.2.0 - 2026-08-10' "$changelog" ||
-  fail "changelog does not record version 0.2.0"
-grep -Fq '## 0.1.1 - 2026-08-08' "$changelog" ||
-  fail "changelog no longer retains version 0.1.1 history"
-grep -Fq 'sh plugins/react-sol-advisor/scripts/verify-luna-thread-contracts.sh' "$workflow" ||
-  fail "GitHub Actions does not run verify-luna-thread-contracts.sh"
-grep -Fq '0.2.1' "$luna_thread_verifier" ||
-  fail "focused Luna thread verifier does not enforce version 0.2.1"
-grep -Fq '## 0.1.1 - 2026-08-08' "$luna_thread_verifier" ||
-  fail "focused Luna thread verifier does not retain 0.1.1 acceptance-record coverage"
-sh -n "$luna_thread_verifier" ||
-  fail "focused Luna thread verifier has invalid shell syntax"
+grep -Fq 'React Sol Advisor' "$codex" || fail "Codex adapter omits legacy alias"
+grep -Fq 'React Sol Advisor' "$cursor" || fail "Cursor adapter omits legacy alias"
+grep -Fq 'codex-luna-detached' "$codex" || fail "Codex detached lane is not documented"
+grep -Fq 'codex-luna-native' "$codex" || fail "Codex native Luna lane is not documented"
+grep -Fq 'requested_service_tier' "$codex" || fail "Codex requested service tier evidence is not documented"
+grep -Fq 'observed_service_tier' "$codex" || fail "Codex observed service tier evidence is not documented"
+grep -Fq 'Cursor CLI support is not claimed' "$cursor" || fail "Cursor CLI boundary is not documented"
+pass "client-specific bindings and evidence"
 
-if grep -Fq "before any explicitly authorized Luna task" "$skill"; then
-  fail "orchestration still treats default policy-selected Luna work as separately opt-in"
-fi
+grep -Fq 'TypeScript is not auto-React' "$profiles" || fail "delivery matrix lost the non-React TypeScript rule"
+grep -Fq 'pg-boss admission plus ownership/orphan reconciliation' "$profiles" || fail "delivery matrix lost the worker/data example"
+grep -Fq 'fle-1007-like' "$repo_dir/plugins/react-sol-advisor/scripts/fixtures/cross-client/cases.json" || fail "FLE-1007-like fixture is missing"
+pass "generic non-React profile selection"
 
-if grep -Eq 'five-part native specification|bounded five-part specification' "$skill"; then
-  fail "orchestration still describes the expanded native packet as five-part"
-fi
-
-if grep -Fq "all balanced work that is not explicitly decomposed to Luna" "$skill"; then
-  fail "Terra routing still captures balanced green work despite the balanced policy mapping"
-fi
-
-grep -Fq "balanced amber or red work" "$skill" ||
-  fail "orchestration lacks an explicit balanced amber/red Terra boundary"
-
-# Critical mode is the deliberately expensive safety policy. Its summary table and
-# user-facing metadata must not imply that green or non-consequential amber work skips
-# the fresh reviewer required by the authoritative orchestration contract.
-grep -Eq '^\| Green \| Terra / High .*fresh Sol reviewer required' "$model_routing" ||
-  fail "critical green routing does not explicitly require a fresh Sol reviewer"
-grep -Fq '| Amber | Terra / High plus fresh Sol reviewer required |' "$model_routing" ||
-  fail "critical amber routing still makes the fresh reviewer conditional"
-grep -Fq 'All critical work receives a mandatory fresh Sol review.' "$readme" ||
-  fail "README does not state the critical-mode final-review guarantee"
-jq -e '.interface.longDescription | contains("critical policy always requires a fresh Sol review")' "$manifest" >/dev/null ||
-  fail "plugin metadata does not state the critical-mode final-review guarantee"
-
-# CI must reproduce the whitespace gate claimed by the README and PR verification
-# packet, rather than relying on an unrecorded local command.
-grep -Fq 'git diff --check' "$workflow" ||
-  fail "GitHub Actions does not run git diff --check"
-
-# If the role contract claims a retired native Luna companion is absent, the installer
-# must actually reject that namespaced file. Otherwise the preflight statement is false.
-if grep -Fq "retired companion file is absent" "$role_contracts"; then
-  grep -Fq "react-sol-advisor-luna-implementer.toml" "$installer" ||
-    fail "role contract claims retired Luna absence but installer does not enforce it"
-fi
-
-# Keep the numbered reference navigable and unambiguous.
-section_numbers=$(grep -E '^## [0-9]+\.' "$model_routing" | sed -E 's/^## ([0-9]+)\..*/\1/' | tr '\n' ' ')
-[ "$section_numbers" = "1 2 3 4 5 6 7 8 9 10 " ] ||
-  fail "model-routing section numbering is not sequential: $section_numbers"
-
-tmp_base=$(rsa_resolve_verifier_tmp_base) || fail "could not resolve verifier TMPDIR"
-fixture=$(mktemp -d "$tmp_base/react-sol-advisor-contracts.XXXXXX") ||
-  fail "could not create retired-role fixture"
-cleanup() {
-  rsa_cleanup_verifier_fixture "$tmp_base" react-sol-advisor-contracts "$fixture" || true
-}
-trap cleanup 0 HUP INT TERM
-
-retired_luna=$fixture/react-sol-advisor-luna-implementer.toml
-printf '%s\n' "user-owned stale native Luna role" > "$retired_luna"
-before=$(cat "$retired_luna")
-if retired_output=$(sh "$installer" --target-dir "$fixture" 2>&1); then
-  fail "installer accepted a retired namespaced native Luna role"
-fi
-printf '%s\n' "$retired_output" |
-  grep -Fq "unsupported native Luna companion must be removed manually: $retired_luna" ||
-  fail "retired native Luna fixture did not reach the intended installer preflight"
-[ "$(cat "$retired_luna")" = "$before" ] ||
-  fail "installer modified the retired native Luna role while refusing it"
-[ ! -e "$fixture/react-sol-advisor-terra-implementer.toml" ] ||
-  fail "installer partially installed Terra before rejecting retired Luna"
-[ ! -e "$fixture/react-sol-advisor-sol-reviewer.toml" ] ||
-  fail "installer partially installed Sol before rejecting retired Luna"
-printf '%s\n' "PASS: retired native Luna role reaches installer preflight"
+grep -Fq 'sh plugins/react-sol-advisor/scripts/verify-cross-client.sh' "$workflow" || fail "CI omits cross-client verifier"
+grep -Fq 'verify-codex-adapter.py' "$workflow" || fail "CI omits Codex adapter verifier"
+grep -Fq 'verify-cursor-agents.py' "$workflow" || fail "CI omits Cursor agent verifier"
+grep -Fq 'verify-docs.py' "$workflow" || fail "CI omits manifest and Markdown verifier"
+grep -Fq 'git diff --check' "$workflow" || fail "CI omits whitespace validation"
+pass "CI contract wiring"
 
 printf '%s\n' "CONTRACTS PASSED"

@@ -1,9 +1,32 @@
 # Native Codex role contracts
 
 Use these contracts with Sol Development Advisor's namespaced, role-pinned native custom agents.
+The shared 0.3.0 route declaration is emitted before any client-specific call:
+
+```text
+ADVISOR ROUTE
+CLIENT: codex | cursor
+POLICY: economy | balanced | critical
+RISK: green | amber | red
+IMPLEMENTATION MODE:
+- codex-luna-native | codex-luna-detached | codex-terra-native
+- cursor-composer | cursor-luna | cursor-grok
+- parent-only | decomposed-mixed
+REASONS:
+OWNERSHIP:
+DELIVERY PROFILES:
+ESCALATION TRIGGERS:
+REVIEW:
+PR POLICY:
+MODEL EVIDENCE:
+```
+
+`React Sol Advisor` is a legacy alias, not a React-only lane. The parent selects
+profiles from owned code and acceptance and records requested versus observed runtime
+model and service-tier evidence.
 They do not launch a nested Codex CLI or change global default-subagent routing. The
-separate [Luna task-lane contract](luna-task-lane.md) covers user-visible app tasks;
-it is not a native custom-agent role and must not be represented by a companion TOML.
+separate [Luna task-lane contract](luna-task-lane.md) covers the detached user-visible
+app-task lane; the optional native Luna role is a distinct evidence-gated binding.
 Adapt every placeholder without removing a required field.
 
 ## Required preflight
@@ -11,13 +34,14 @@ Adapt every placeholder without removing a required field.
 Before every native spawn, complete steps 1-2 of SKILL.md's preflight. After spawning,
 complete steps 3-4 before accepting the result:
 
-1. Require the non-mutating companion check to prove both installed files exactly
-   match current templates and the retired companion file is absent.
-2. Require native exposure of exactly `react_sol_advisor_terra_implementer` and
-   `react_sol_advisor_sol_reviewer`.
+1. Require the non-mutating companion check to prove all three installed files exactly
+   match current templates: Luna, Terra, and Sol reviewer.
+2. Require native exposure of exactly `react_sol_advisor_luna_implementer`,
+   `react_sol_advisor_terra_implementer`, and `react_sol_advisor_sol_reviewer`.
 3. Observe the selected role, model, and effort through public spawn/details metadata
-   first, using the local runtime inspector only for omitted fields. Accept only
-   Terra / High for implementation and Sol / High for review.
+   first, using the local runtime inspector only for omitted fields. Accept Luna / Max
+   only for bounded green work with deliberately observed tier evidence, Terra / High
+   for escalation, and Sol / High for review.
 4. For the reviewer, capture actual sandbox policy and permission profile types.
 
 A missing, stale, unsafe, conflicting, unavailable, inconsistent, or unobservable
@@ -197,7 +221,29 @@ authorization; a dependent task starts only after the prior stack is accepted.
 Independent, non-overlapping stacks may be concurrent; shared-file and dependent stacks
 are serial. Worktree isolation alone is not merge safety.
 
-## Terra / High - sole native implementation lane
+## Native Luna / Max - optional bounded implementation lane
+
+Use this lane only when the exact native role, model, effort, and effective service
+tier are observable. It is not a substitute for the detached Fast-capable task lane
+when the host cannot expose or set the required tier.
+
+Spawn exactly:
+
+~~~text
+agent_type: react_sol_advisor_luna_implementer
+fork_turns: none
+~~~
+
+The installed role pins GPT-5.6 Luna at max reasoning. The packet must be fully
+specified, green, bounded, and generic. The child applies production-delivery and the
+selected conditional profiles, preserves ownership, stops on ambiguity or newly
+revealed amber/red risk, and never owns architecture, PRs, Linear, publication,
+review completion, merge, closeout, deployment, or external state. One corrected
+attempt is allowed for an incorrect specification; genuine misclassification escalates
+immediately to Terra. Requested versus observed model and service-tier evidence is
+recorded separately. Do not infer Fast from the role name, prompt, or model catalog.
+
+## Terra / High - native escalation implementation lane
 
 Use this lane for every delegated native implementation, from routine edits through
 complex, security-sensitive, context-heavy, and broad work. It is not the Luna

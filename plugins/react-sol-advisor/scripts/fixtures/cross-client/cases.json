@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "cases": [
+    {
+      "id": "pure-typescript-provider-error-classifier",
+      "owned_paths": ["src/provider-error-classifier.ts"],
+      "acceptance": ["deterministic table-driven tests"],
+      "react_files": [],
+      "expected": {
+        "eligible": true,
+        "risk": "green",
+        "profiles": ["production-delivery", "typescript-backend-delivery"],
+        "codex_mode": "codex-luna-detached",
+        "cursor_mode": "cursor-composer",
+        "confirmation_required": false,
+        "blocked_reasons": []
+      }
+    },
+    {
+      "id": "fle-1007-like-backend-data-worker",
+      "owned_paths": [
+        "src/jobs/pg-boss-admission.ts",
+        "src/jobs/database-ownership.ts",
+        "src/providers/provider-request-state.ts",
+        "src/workers/safeguards.ts",
+        "src/workers/orphan-reconciliation.ts"
+      ],
+      "acceptance": [
+        "pg-boss admission",
+        "database ownership metadata",
+        "provider-request state",
+        "worker safeguards",
+        "orphan reconciliation"
+      ],
+      "react_files": [],
+      "expected": {
+        "eligible": true,
+        "risk": "amber",
+        "profiles": [
+          "production-delivery",
+          "typescript-backend-delivery",
+          "postgres-data-delivery",
+          "worker-integration-delivery"
+        ],
+        "codex_mode": "decomposed-mixed",
+        "cursor_mode": "cursor-grok",
+        "confirmation_required": false,
+        "blocked_reasons": []
+      }
+    },
+    {
+      "id": "fle-1007-like-schema-migration",
+      "owned_paths": ["migrations/20260816_provider_request_ownership.sql"],
+      "acceptance": ["tenant-safe schema migration", "rollback verification"],
+      "react_files": [],
+      "expected": {
+        "eligible": true,
+        "risk": "red",
+        "profiles": ["production-delivery", "postgres-data-delivery"],
+        "codex_mode": "codex-terra-native",
+        "cursor_mode": "cursor-grok",
+        "confirmation_required": false,
+        "blocked_reasons": [],
+        "fresh_sol_review_required": true
+      }
+    },
+    {
+      "id": "real-react-green",
+      "owned_paths": ["src/components/CustomerStatusFilter.tsx"],
+      "acceptance": ["URL state", "keyboard interaction", "accessible label"],
+      "react_files": ["src/components/CustomerStatusFilter.tsx"],
+      "expected": {
+        "eligible": true,
+        "risk": "green",
+        "profiles": ["production-delivery", "react-production-delivery"],
+        "codex_mode": "codex-luna-detached",
+        "cursor_mode": "cursor-composer",
+        "confirmation_required": false,
+        "blocked_reasons": []
+      }
+    },
+    {
+      "id": "mixed-react-backend",
+      "owned_paths": ["src/components/CustomerStatusFilter.tsx", "src/api/customer-status.ts"],
+      "acceptance": ["URL state", "established REST response"],
+      "react_files": ["src/components/CustomerStatusFilter.tsx"],
+      "expected": {
+        "eligible": true,
+        "risk": "green",
+        "profiles": [
+          "production-delivery",
+          "react-production-delivery",
+          "typescript-backend-delivery"
+        ],
+        "codex_mode": "decomposed-mixed",
+        "cursor_mode": "decomposed-mixed",
+        "confirmation_required": false,
+        "blocked_reasons": []
+      }
+    },
+    {
+      "id": "legacy-name-alias",
+      "owned_paths": ["src/provider-error-classifier.ts"],
+      "acceptance": ["deterministic table-driven tests"],
+      "react_files": [],
+      "invocations": ["Sol Development Advisor", "React Sol Advisor"],
+      "expected": {
+        "eligible": true,
+        "risk": "green",
+        "profiles": ["production-delivery", "typescript-backend-delivery"],
+        "codex_mode": "codex-luna-detached",
+        "cursor_mode": "cursor-composer",
+        "confirmation_required": false,
+        "blocked_reasons": []
+      }
+    }
+  ]
+}

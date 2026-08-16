@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cursor/plugins/main/schemas/plugin.schema.json",
+  "name": "sol-development-advisor",
+  "displayName": "Sol Development Advisor",
+  "description": "Generic production delivery guidance with profile-aware Cursor agents for routine, specialist, and high-complexity work.",
+  "version": "0.3.0",
+  "author": {"name": "Anders Gerner", "url": "https://github.com/AndersGerner"},
+  "homepage": "https://github.com/AndersGerner/react-sol-advisor",
+  "repository": "https://github.com/AndersGerner/react-sol-advisor",
+  "license": "MIT",
+  "keywords": ["orchestration", "production-delivery", "typescript", "react", "cursor"],
+  "category": "Productivity",
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "commands": "./commands/",
+  "rules": "./rules/"
+}

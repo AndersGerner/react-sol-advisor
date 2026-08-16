@@ -21,6 +21,18 @@ jobs:
       - name: Run repository verifier
         run: sh plugins/react-sol-advisor/scripts/verify.sh
 
+      - name: Run cross-client semantic and shared-core acceptance
+        run: sh plugins/react-sol-advisor/scripts/verify-cross-client.sh
+
+      - name: Run Cursor generated-agent acceptance
+        run: python3 plugins/react-sol-advisor/scripts/verify-cursor-agents.py
+
+      - name: Run Codex adapter and three-role acceptance
+        run: python3 plugins/react-sol-advisor/scripts/verify-codex-adapter.py
+
+      - name: Run manifest, Markdown link, and whitespace acceptance
+        run: python3 plugins/react-sol-advisor/scripts/verify-docs.py
+
       - name: Run focused hardening regressions
         run: sh plugins/react-sol-advisor/scripts/verify-hardening.sh
 
