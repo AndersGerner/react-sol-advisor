@@ -305,4 +305,4 @@ inspector treated missing observed tier metadata as reportable rather than block
 | Installer migration | Known 0.3.0 Luna role upgrades transactionally and refuses unknown conflicts | Complete locally; global roles updated |
 | Verification | Positive priority/fast fixtures plus missing/unsupported-tier failures | Complete locally; full suite passed |
 | Fresh native probe | Role/model/effort and read-only commands ran; host reported service tier `null` | Blocked by host metadata |
-| Marketplace release | 0.3.1 source is uncommitted/unpushed; active marketplace install remains 0.3.0 | Pending explicit publication authorization |
+| Marketplace release | 0.3.1 repair is committed as `6043ce0` and pushed to `origin/fix/native-luna-fast-tier`; the configured marketplace tracks `main`, so the active install remains 0.3.0 until main-branch publication | Awaiting main-branch publication |
