@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safely configure exact Cursor-native model IDs for the 0.3.0 agent roles."""
+"""Safely configure exact Cursor-native model IDs for the 0.3.1 agent roles."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 RECEIPT = ".sol-development-advisor-models.json"
 ROLE_FILES = {
     "composer": "sol-advisor-composer-routine.md",

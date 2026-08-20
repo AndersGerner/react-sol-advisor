@@ -16,8 +16,8 @@ cursor=$plugin_dir/skills/orchestration/references/cursor-adapter.md
 changelog=$repo_dir/CHANGELOG.md
 workflow=$repo_dir/.github/workflows/verify.yml
 
-[ "$(jq -r '.version' "$manifest")" = "0.3.0" ] || fail "manifest version is not 0.3.0"
-grep -Fq '## 0.3.0 - 2026-08-16' "$changelog" || fail "changelog does not record 0.3.0"
+[ "$(jq -r '.version' "$manifest")" = "0.3.1" ] || fail "manifest version is not 0.3.1"
+grep -Fq '## 0.3.1 - 2026-08-20' "$changelog" || fail "changelog does not record 0.3.1"
 grep -Fq '## 0.2.1 - 2026-08-10' "$changelog" || fail "changelog no longer retains 0.2.1 history"
 grep -Fq '## 0.2.0 - 2026-08-10' "$changelog" || fail "changelog no longer retains 0.2.0 history"
 grep -Fq '## 0.1.1 - 2026-08-08' "$changelog" || fail "changelog no longer retains 0.1.1 history"

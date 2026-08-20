@@ -25,7 +25,7 @@ pass "detached Luna lifecycle and Fast evidence"
 grep -Fq 'LUNA FAST MODE: blocked' "$lane" || fail "detached lane lacks fail-closed Fast result"
 grep -Fq 'infer Fast mode from' "$lane" || fail "detached lane permits inferring Fast from model or prompt"
 grep -Fq 'capability-adaptive' "$skill" || fail "detached monitor is not capability-adaptive"
-grep -Fq '0.3.0' "$plugin_dir/.codex-plugin/plugin.json" || fail "detached lane is not packaged at 0.3.0"
+grep -Fq '0.3.1' "$plugin_dir/.codex-plugin/plugin.json" || fail "detached lane is not packaged at 0.3.1"
 pass "detached Luna no-silent-fallback rules"
 
 grep -Fq '## 0.1.1 - 2026-08-08' "$repo_dir/CHANGELOG.md" || fail "historical detached fallback release was removed"

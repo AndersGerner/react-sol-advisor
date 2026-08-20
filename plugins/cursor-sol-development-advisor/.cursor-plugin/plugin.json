@@ -3,7 +3,7 @@
   "name": "sol-development-advisor",
   "displayName": "Sol Development Advisor",
   "description": "Generic production delivery guidance with profile-aware Cursor agents for routine, specialist, and high-complexity work.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": {"name": "Anders Gerner", "url": "https://github.com/AndersGerner"},
   "homepage": "https://github.com/AndersGerner/react-sol-advisor",
   "repository": "https://github.com/AndersGerner/react-sol-advisor",

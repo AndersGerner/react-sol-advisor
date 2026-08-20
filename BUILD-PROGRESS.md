@@ -291,3 +291,18 @@ is deterministic fixture evidence only; a live native spawn remains capability-d
 - Hosted Verify run `31970711991` passed every workflow step at `63b66b8`. The PR was
   explicitly returned to draft after GitHub initially reported it as ready; it is open,
   draft, clean, and unmerged. No hosted review comments were present at handoff.
+
+## 0.3.1 native Luna Fast pin repair
+
+This section records the follow-up repair for the installed native Luna lane. The
+0.3.0 role requested Luna/max without an explicit service tier, and the runtime
+inspector treated missing observed tier metadata as reportable rather than blocking.
+
+| Scope | Intended evidence | Status |
+|---|---|---|
+| Native Luna role | Shipped TOML requests `service_tier = "fast"`; Terra/Sol remain tier-agnostic | Complete locally |
+| Runtime inspector | Observed Luna tier `fast` or `priority` passes; missing/other tier fails | Complete locally |
+| Installer migration | Known 0.3.0 Luna role upgrades transactionally and refuses unknown conflicts | Complete locally; global roles updated |
+| Verification | Positive priority/fast fixtures plus missing/unsupported-tier failures | Complete locally; full suite passed |
+| Fresh native probe | Role/model/effort and read-only commands ran; host reported service tier `null` | Blocked by host metadata |
+| Marketplace release | 0.3.1 source is uncommitted/unpushed; active marketplace install remains 0.3.0 | Pending explicit publication authorization |

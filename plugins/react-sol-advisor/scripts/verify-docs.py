@@ -63,7 +63,7 @@ def verify_cursor_schema() -> None:
     manifest = json.loads(manifest_path.read_text())
     if manifest.get("$schema") != "https://raw.githubusercontent.com/cursor/plugins/main/schemas/plugin.schema.json":
         fail("Cursor manifest does not reference the current official plugin schema")
-    if manifest.get("name") != "sol-development-advisor" or manifest.get("version") != "0.3.0":
+    if manifest.get("name") != "sol-development-advisor" or manifest.get("version") != "0.3.1":
         fail("Cursor manifest identity/version is invalid")
     allowed = {
         "$schema", "name", "displayName", "description", "version", "author", "homepage",

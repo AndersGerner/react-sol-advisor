@@ -14,9 +14,17 @@ import time
 from pathlib import Path
 
 
-OLD_DIGESTS = {
-    "terra": "8cd2ed825f58574fd578832dd35f7932d365214db91ab84f79af7a64d3c863b1",
-    "sol": "cf96fa0b638d879b072b896748e985ded79e68f2814e9eeab8b9c8c841776241",
+KNOWN_STALE_DIGESTS = {
+    # The current 0.3.0 Luna role predates the native Fast pin.
+    "luna": {
+        "0.3.0": "fa3772a4a392e39261db337c167c512f159d35b5ac592223884aed2e744a4daf",
+    },
+    "terra": {
+        "0.1.1": "8cd2ed825f58574fd578832dd35f7932d365214db91ab84f79af7a64d3c863b1",
+    },
+    "sol": {
+        "0.1.1": "cf96fa0b638d879b072b896748e985ded79e68f2814e9eeab8b9c8c841776241",
+    },
 }
 ROLES = (
     ("luna", "react-sol-advisor-luna-implementer.toml"),
@@ -112,9 +120,18 @@ def classify(path: Path, template: Path, role: str) -> str:
         return "unsafe"
     if path.read_bytes() == template.read_bytes():
         return "current"
-    if role in OLD_DIGESTS and digest(path) == OLD_DIGESTS[role]:
-        return "known-stale-0.1.1"
+    for version, expected in KNOWN_STALE_DIGESTS.get(role, {}).items():
+        if digest(path) == expected:
+            return f"known-stale-{version}"
     return "conflict"
+
+
+def stale_digest(role: str, state: str) -> str:
+    version = state.removeprefix("known-stale-")
+    expected = KNOWN_STALE_DIGESTS.get(role, {}).get(version)
+    if expected is None:
+        fail(f"no guarded digest is registered for {role} state {state}")
+    return expected
 
 
 def target_from(args: argparse.Namespace) -> Path:
@@ -187,7 +204,7 @@ class Transaction:
                 fail(f"could not stage and verify {role} template")
             self.stages[role] = stage
             self.displaced[role] = self.transaction / f"{role}.displaced"
-            if role in OLD_DIGESTS:
+            if role in KNOWN_STALE_DIGESTS:
                 self.backups[role] = self.transaction / f"{role}.backup"
 
     def acquire_lock(self) -> None:
@@ -207,12 +224,13 @@ class Transaction:
         if os.path.islink(owner) or not owner.is_file():
             fail(f"upgrade lock owner is unavailable: {owner}")
 
-    def backup_old(self, role: str, destination: Path) -> None:
+    def backup_old(self, role: str, destination: Path, state: str) -> None:
         backup = self.backups[role]
         if lstat(backup) is not None:
             fail(f"private {role} backup already exists: {backup}")
         os.link(destination, backup)
-        if not exact_file(backup, OLD_DIGESTS[role]) or backup.read_bytes() != destination.read_bytes():
+        expected = stale_digest(role, state)
+        if not exact_file(backup, expected) or backup.read_bytes() != destination.read_bytes():
             fail(f"could not create guarded {role} upgrade backup")
 
     def publish_new(self, role: str) -> None:
@@ -239,14 +257,16 @@ class Transaction:
     def publish_replace(self, role: str) -> None:
         filename, template = self.templates[role]
         destination = self.target / filename
-        if classify(destination, template, role) != "known-stale-0.1.1":
+        state = classify(destination, template, role)
+        if not state.startswith("known-stale-"):
             fail(f"known {role} destination changed before publication: {destination}")
-        self.backup_old(role, destination)
+        expected = stale_digest(role, state)
+        self.backup_old(role, destination, state)
         displaced = self.displaced[role]
         if lstat(displaced) is not None:
             fail(f"private {role} displaced slot already exists: {displaced}")
         os.replace(destination, displaced)
-        if not exact_file(displaced, OLD_DIGESTS[role]):
+        if not exact_file(displaced, expected):
             # A concurrent writer may have replaced the destination between the
             # preflight classification and os.replace(). Never discard those bytes:
             # restore them when the public slot is still empty, otherwise preserve
@@ -298,12 +318,13 @@ class Transaction:
                 print(f"ERROR: refusing to overwrite concurrent {role} destination during rollback: {destination}", file=sys.stderr)
                 rollback_ok = False
                 continue
-            if lstat(displaced) is None or not exact_file(displaced, OLD_DIGESTS[role]):
+            expected_state = self.initial[role]
+            if lstat(displaced) is None or not exact_file(displaced, stale_digest(role, expected_state)):
                 print(f"ERROR: guarded {role} displacement is unavailable for rollback: {displaced}", file=sys.stderr)
                 rollback_ok = False
                 continue
             os.replace(displaced, destination)
-            if classify(destination, template, role) != "known-stale-0.1.1":
+            if classify(destination, template, role) != expected_state:
                 rollback_ok = False
         if self.transaction is not None and self.transaction.exists():
             if rollback_ok and not self.preserve_transaction:
@@ -337,8 +358,8 @@ class Transaction:
             if current != self.initial:
                 fail(f"destinations changed after preflight: {current}")
             if self.upgrade:
-                for role in ("terra", "sol"):
-                    if current[role] == "known-stale-0.1.1":
+                for role in ("terra", "sol", "luna"):
+                    if current[role].startswith("known-stale-"):
                         self.publish_replace(role)
                 if current["luna"] == "missing":
                     self.publish_new("luna")
@@ -373,9 +394,9 @@ class Transaction:
 
 def validate_mode(states: dict[str, str], mode: str) -> None:
     if mode == "check":
-        for role in ("terra", "sol"):
-            if states[role] == "known-stale-0.1.1":
-                fail(f"{role} template is known stale 0.1.1; rerun with --upgrade-known")
+        for role, state in states.items():
+            if state.startswith("known-stale-"):
+                fail(f"{role} template is known stale {state.removeprefix('known-stale-')}; rerun with --upgrade-known")
         for role, current in states.items():
             if current != "current":
                 fail(f"{role} template is {current}, not the current exact file")
@@ -390,7 +411,7 @@ def validate_mode(states: dict[str, str], mode: str) -> None:
         ("known-stale-0.1.1", "known-stale-0.1.1"),
     }:
         fail(f"--upgrade-known requires a current/current or known-stale/known-stale Terra/Sol pair; found {(states['terra'], states['sol'])}")
-    if states["luna"] not in {"missing", "current"}:
+    if states["luna"] not in {"missing", "current", "known-stale-0.3.0"}:
         fail(f"native Luna destination is {states['luna']} and will not be replaced")
 
 

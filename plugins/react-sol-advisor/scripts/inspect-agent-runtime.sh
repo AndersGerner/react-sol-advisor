@@ -173,6 +173,10 @@ if ! jq -ce -s \
       error("conflicting observed service tiers")
     elif (($requested_service_tiers | map(select(. != null)) | unique | length) > 1) then
       error("conflicting requested service tiers")
+    elif $agent_role == "react_sol_advisor_luna_implementer" and any($service_tiers[]; . == null or . == "") then
+      error("missing observed service tier for native Luna")
+    elif $agent_role == "react_sol_advisor_luna_implementer" and any($service_tiers[]; . != "fast" and . != "priority") then
+      error("unsupported observed service tier for native Luna")
     else
       {
         thread_id: $session_thread_id,

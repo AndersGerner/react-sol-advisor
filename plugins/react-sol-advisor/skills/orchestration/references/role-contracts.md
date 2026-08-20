@@ -1,7 +1,7 @@
 # Native Codex role contracts
 
 Use these contracts with Sol Development Advisor's namespaced, role-pinned native custom agents.
-The shared 0.3.0 route declaration is emitted before any client-specific call:
+The shared 0.3.1 route declaration is emitted before any client-specific call:
 
 ```text
 ADVISOR ROUTE
@@ -40,7 +40,8 @@ complete steps 3-4 before accepting the result:
    `react_sol_advisor_terra_implementer`, and `react_sol_advisor_sol_reviewer`.
 3. Observe the selected role, model, and effort through public spawn/details metadata
    first, using the local runtime inspector only for omitted fields. Accept Luna / Max
-   only for bounded green work with deliberately observed tier evidence, Terra / High
+   only for bounded green work with deliberately observed `fast` or `priority` tier
+   evidence, Terra / High
    for escalation, and Sol / High for review.
 4. For the reviewer, capture actual sandbox policy and permission profile types.
 
@@ -234,7 +235,8 @@ agent_type: react_sol_advisor_luna_implementer
 fork_turns: none
 ~~~
 
-The installed role pins GPT-5.6 Luna at max reasoning. The packet must be fully
+The installed role pins GPT-5.6 Luna at max reasoning with `service_tier = "fast"`. The
+effective runtime tier must be observed as `fast` or `priority`. The packet must be fully
 specified, green, bounded, and generic. The child applies production-delivery and the
 selected conditional profiles, preserves ownership, stops on ambiguity or newly
 revealed amber/red risk, and never owns architecture, PRs, Linear, publication,

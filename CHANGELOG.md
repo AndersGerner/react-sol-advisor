@@ -2,6 +2,17 @@
 
 All notable changes to Sol Development Advisor will be documented in this file.
 
+## 0.3.1 - 2026-08-20
+
+### Changed
+
+- Pinned native Luna companion roles to `service_tier = "fast"` alongside
+  `gpt-5.6-luna` and max reasoning.
+- Made native Luna runtime inspection fail closed when effective service-tier metadata
+  is missing or is not `fast`/`priority`; Terra and Sol reviewer remain tier-agnostic.
+- Added a guarded known-0.3.0 Luna role upgrade so existing installations can receive
+  the Fast pin without replacing unknown or modified files.
+
 ## 0.3.0 - 2026-08-16
 
 ### Changed

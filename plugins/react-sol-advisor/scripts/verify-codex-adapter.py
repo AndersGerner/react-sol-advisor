@@ -26,6 +26,7 @@ AGENTS = PLUGIN / "agents"
 INSTALLER = PLUGIN / "scripts" / "install-agents.sh"
 INSPECTOR = PLUGIN / "scripts" / "inspect-agent-runtime.sh"
 FIXTURES = PLUGIN / "scripts" / "fixtures" / "native-roles-0.1.1"
+LUNA_STALE_FIXTURE = PLUGIN / "scripts" / "fixtures" / "native-roles-0.3.0" / "react-sol-advisor-luna-implementer.toml"
 ROLE_FILES = {
     "luna": "react-sol-advisor-luna-implementer.toml",
     "terra": "react-sol-advisor-terra-implementer.toml",
@@ -59,9 +60,9 @@ def main() -> int:
         if tomllib is None:
             raise AssertionError("Python tomllib is required for structured TOML verification")
         role_pins = {
-            "luna": ("gpt-5.6-luna", "max"),
-            "terra": ("gpt-5.6-terra", "high"),
-            "sol": ("gpt-5.6-sol", "high"),
+            "luna": {"model": "gpt-5.6-luna", "effort": "max", "service_tier": "fast"},
+            "terra": {"model": "gpt-5.6-terra", "effort": "high"},
+            "sol": {"model": "gpt-5.6-sol", "effort": "high"},
         }
         for role, filename in ROLE_FILES.items():
             path = AGENTS / filename
@@ -72,8 +73,17 @@ def main() -> int:
                 raise AssertionError(f"wrong native role name for {role}")
             if role == "sol" and data.get("name") != "react_sol_advisor_sol_reviewer":
                 raise AssertionError("wrong native Sol reviewer role name")
-            if (data.get("model"), data.get("model_reasoning_effort")) != role_pins[role]:
-                raise AssertionError(f"wrong native model/effort pin for {role}")
+            expected_pin = role_pins[role]
+            actual_pin = {
+                "model": data.get("model"),
+                "effort": data.get("model_reasoning_effort"),
+            }
+            if "service_tier" in expected_pin:
+                actual_pin["service_tier"] = data.get("service_tier")
+            elif "service_tier" in data:
+                raise AssertionError(f"unexpected service-tier pin for tier-agnostic role {role}")
+            if actual_pin != expected_pin:
+                raise AssertionError(f"wrong native routing pin for {role}")
         codex_adapter = (PLUGIN / "skills" / "orchestration" / "references" / "codex-adapter.md").read_text()
         for term in ("codex-luna-detached", "codex-luna-native", "requested_service_tier", "observed_service_tier", "LUNA FAST MODE: blocked"):
             if term not in codex_adapter:
@@ -178,6 +188,19 @@ def main() -> int:
             if (stale / ROLE_FILES["luna"]).read_text() != (AGENTS / ROLE_FILES["luna"]).read_text():
                 raise AssertionError("upgrade did not install exact native Luna")
 
+            luna_stale = root / "luna-stale"
+            luna_stale.mkdir()
+            for role in ("terra", "sol"):
+                (luna_stale / ROLE_FILES[role]).write_bytes((AGENTS / ROLE_FILES[role]).read_bytes())
+            (luna_stale / ROLE_FILES["luna"]).write_bytes(LUNA_STALE_FIXTURE.read_bytes())
+            luna_stale_check = run("sh", str(INSTALLER), "--target-dir", str(luna_stale), "--check", check=False)
+            if luna_stale_check.returncode == 0 or "known stale 0.3.0" not in luna_stale_check.stderr:
+                raise AssertionError("--check did not identify the known-stale 0.3.0 Luna role")
+            run("sh", str(INSTALLER), "--target-dir", str(luna_stale), "--upgrade-known")
+            run("sh", str(INSTALLER), "--target-dir", str(luna_stale), "--check")
+            if (luna_stale / ROLE_FILES["luna"]).read_bytes() != (AGENTS / ROLE_FILES["luna"]).read_bytes():
+                raise AssertionError("known-stale 0.3.0 Luna upgrade did not install the exact current role")
+
             failed = root / "failed"
             failed.mkdir()
             for filename in ("react-sol-advisor-terra-implementer.toml", "react-sol-advisor-sol-reviewer.toml"):
@@ -195,6 +218,22 @@ def main() -> int:
                 raise AssertionError("failed upgrade left a native Luna role")
             if any(path.name.startswith(".react-sol-advisor-upgrade") for path in failed.iterdir()):
                 raise AssertionError("failed upgrade left a public transaction artifact")
+
+            failed_luna = root / "failed-luna"
+            failed_luna.mkdir()
+            for role in ("terra", "sol"):
+                (failed_luna / ROLE_FILES[role]).write_bytes((AGENTS / ROLE_FILES[role]).read_bytes())
+            (failed_luna / ROLE_FILES["luna"]).write_bytes(LUNA_STALE_FIXTURE.read_bytes())
+            failed_luna_result = run(
+                "sh", str(INSTALLER), "--target-dir", str(failed_luna), "--upgrade-known",
+                env={**os.environ, "RSA_INSTALL_TEST_FAIL_ROLE": "luna"}, check=False,
+            )
+            if failed_luna_result.returncode == 0:
+                raise AssertionError("forced native Luna replacement failure was accepted")
+            if (failed_luna / ROLE_FILES["luna"]).read_bytes() != LUNA_STALE_FIXTURE.read_bytes():
+                raise AssertionError("failed native Luna replacement did not restore the known-stale role")
+            if any(path.name.startswith(".react-sol-advisor-upgrade") for path in failed_luna.iterdir()):
+                raise AssertionError("failed native Luna replacement left a public transaction artifact")
 
             interrupted = root / "interrupted"
             ready = root / "interrupted.ready"
@@ -243,13 +282,29 @@ def main() -> int:
             if evidence["observed_service_tier"] != "priority" or evidence["requested_service_tier"] != "priority":
                 raise AssertionError("native Luna service-tier evidence was not reported separately")
 
+            fast_tier = root / "fast-tier"
+            fast_tier.mkdir()
+            fast_rollout = fast_tier / f"rollout-test-{thread_id}.jsonl"
+            fast_rollout.write_text("\n".join(json.dumps(record) for record in records[:-1] + [{"type": "turn_context", "payload": {"model": "gpt-5.6-luna", "effort": "max", "sandbox_policy": {"type": "workspace-write"}, "permission_profile": {"type": "default"}, "cwd": str(root), "serviceTier": "fast", "requestedServiceTier": "fast"}}]) + "\n")
+            fast_evidence = json.loads(run("sh", str(INSPECTOR), "--sessions-dir", str(fast_tier), thread_id).stdout)
+            if fast_evidence["observed_service_tier"] != "fast" or fast_evidence["requested_service_tier"] != "fast":
+                raise AssertionError("native Luna Fast alias was not accepted as observed service-tier evidence")
+
             no_tier = root / "no-tier"
             no_tier.mkdir()
             no_tier_rollout = no_tier / f"rollout-test-{thread_id}.jsonl"
             no_tier_rollout.write_text("\n".join(json.dumps(record) for record in records[:-1] + [{"type": "turn_context", "payload": {"model": "gpt-5.6-luna", "effort": "max", "sandbox_policy": {"type": "workspace-write"}, "permission_profile": {"type": "default"}, "cwd": str(root)}}]) + "\n")
-            no_tier_evidence = json.loads(run("sh", str(INSPECTOR), "--sessions-dir", str(no_tier), thread_id).stdout)
-            if no_tier_evidence["observed_service_tier"] is not None:
-                raise AssertionError("missing native service-tier metadata was inferred")
+            no_tier_result = run("sh", str(INSPECTOR), "--sessions-dir", str(no_tier), thread_id, check=False)
+            if no_tier_result.returncode == 0:
+                raise AssertionError("missing native service-tier metadata was accepted")
+
+            invalid_tier = root / "invalid-tier"
+            invalid_tier.mkdir()
+            invalid_rollout = invalid_tier / f"rollout-test-{thread_id}.jsonl"
+            invalid_rollout.write_text("\n".join(json.dumps(record) for record in records[:-1] + [{"type": "turn_context", "payload": {"model": "gpt-5.6-luna", "effort": "max", "sandbox_policy": {"type": "workspace-write"}, "permission_profile": {"type": "default"}, "cwd": str(root), "serviceTier": "default", "requestedServiceTier": "default"}}]) + "\n")
+            invalid_result = run("sh", str(INSPECTOR), "--sessions-dir", str(invalid_tier), thread_id, check=False)
+            if invalid_result.returncode == 0:
+                raise AssertionError("unsupported native Luna service-tier metadata was accepted")
         print("CODEX ADAPTER ACCEPTANCE PASSED")
         return 0
     except (AssertionError, OSError, json.JSONDecodeError) as error:

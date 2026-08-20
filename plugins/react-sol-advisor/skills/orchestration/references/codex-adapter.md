@@ -28,8 +28,8 @@ Before any Codex app-task or native-agent call, emit the shared declaration with
 `CLIENT: codex` and one of:
 
 - `codex-luna-detached` — the validated user-visible Luna app-task lane;
-- `codex-luna-native` — the optional native Luna / Max role, only with exact runtime
-  and service-tier evidence;
+- `codex-luna-native` — the optional native Luna / Max / Fast role, only with exact
+  runtime and service-tier evidence;
 - `codex-terra-native` — the namespaced Terra / High implementation lane;
 - `decomposed-mixed` — parent decomposition with independently eligible workstreams;
 - `parent-only` — no auxiliary call is necessary or capability evidence is missing.
@@ -62,12 +62,14 @@ silently switch between detached and native Luna, Terra, Sol, or another client.
 The managed role namespace is:
 
 - `react_sol_advisor_luna_implementer` — `gpt-5.6-luna` / `max` for bounded green work;
+  Native Luna additionally pins `service_tier = "fast"`; the effective runtime tier
+  must be observable as `fast` or `priority`;
 - `react_sol_advisor_terra_implementer` — `gpt-5.6-terra` / `high` for escalation;
 - `react_sol_advisor_sol_reviewer` — `gpt-5.6-sol` / `high` for fresh review.
 
-Native Luna is eligible only when the exact role, model, effort, and deliberately
-inherited or set service tier are observable. The role applies production delivery and
-selected `production-delivery` and conditional profiles, stays within ownership, stops on ambiguity or newly revealed risk,
+Native Luna is eligible only when the exact role, model, effort, and effective service
+tier are observable. The role applies production delivery and selected
+`production-delivery` and conditional profiles, stays within ownership, stops on ambiguity or newly revealed risk,
 and may make one corrected attempt for an incorrect specification. It never owns
 architecture, PRs, merges, Linear, deployment, or external state.
 

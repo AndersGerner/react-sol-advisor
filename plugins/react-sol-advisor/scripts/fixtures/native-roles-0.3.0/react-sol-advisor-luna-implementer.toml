@@ -2,7 +2,6 @@ name = "react_sol_advisor_luna_implementer"
 description = "Sol Development Advisor's bounded generic Luna implementation lane when exact native runtime evidence permits it."
 model = "gpt-5.6-luna"
 model_reasoning_effort = "max"
-service_tier = "fast"
 
 developer_instructions = """
 You are Sol Development Advisor's bounded generic Luna implementation worker. Execute

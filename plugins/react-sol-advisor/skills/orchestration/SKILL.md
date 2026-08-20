@@ -3,7 +3,7 @@ name: orchestration
 description: "Sol Development Advisor Luna-first orchestration: green economy work routes to GPT-5.6 Luna / Max / Fast app tasks; amber/red or balanced/critical work escalates to Terra / High; fresh Sol review at commitment boundaries; no silent lane fallback."
 ---
 
-# 0.3.0 shared generic core and client route
+# 0.3.1 shared generic core and client route
 
 Read [the shared core](references/shared-core.md), [the Codex adapter](references/codex-adapter.md),
 and [the Cursor adapter](references/cursor-adapter.md) before any client-specific call.
@@ -181,9 +181,10 @@ complete steps 3-4 before accepting its result.
    ~~~
 
    The helper's allowlisted output is the authoritative local fallback for omitted
-   model and effort. If public and local values both exist, they must agree. Accepted
-   values are Luna / max for bounded green work, Terra / high for escalation, and Sol /
-   high for review. Missing,
+   model and effort. If public and local values both exist, they must agree. For native
+   Luna, the effective service tier must also be observable as `fast` or `priority`.
+   Accepted values are Luna / max for bounded green work, Terra / high for escalation,
+   and Sol / high for review. Missing,
    inconsistent, unavailable, or unobservable routing stops that lane.
 
 4. For the reviewer, capture the observed sandbox policy type and permission profile
@@ -191,8 +192,8 @@ complete steps 3-4 before accepting its result.
    it. Never call the review OS-enforced read-only unless the observed sandbox policy
    type is `read-only`.
 
-The custom-agent TOML, not the spawn call, pins model and effort. Never add per-spawn
-model or reasoning overrides.
+The custom-agent TOML, not the spawn call, pins model and effort; the Luna role also
+pins `service_tier = "fast"`. Never add per-spawn model, reasoning, or tier overrides.
 
 ## Keep architect work in the primary session
 

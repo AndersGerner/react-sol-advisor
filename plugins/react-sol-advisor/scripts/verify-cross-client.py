@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic 0.3.0 cross-client and non-React acceptance oracle."""
+"""Deterministic 0.3.1 cross-client and non-React acceptance oracle."""
 
 from __future__ import annotations
 
@@ -172,12 +172,12 @@ def verify_fixtures() -> None:
 def verify_manifests_and_core() -> None:
     codex_manifest = load_json(PLUGIN / ".codex-plugin" / "plugin.json")
     assert_equal("Codex manifest name", codex_manifest.get("name"), "react-sol-advisor")
-    assert_equal("Codex manifest version", codex_manifest.get("version"), "0.3.0")
+    assert_equal("Codex manifest version", codex_manifest.get("version"), "0.3.1")
     assert_equal("Codex display name", codex_manifest.get("interface", {}).get("displayName"), "Sol Development Advisor")
 
     cursor_manifest = load_json(CURSOR / ".cursor-plugin" / "plugin.json")
     assert_equal("Cursor manifest name", cursor_manifest.get("name"), "sol-development-advisor")
-    assert_equal("Cursor manifest version", cursor_manifest.get("version"), "0.3.0")
+    assert_equal("Cursor manifest version", cursor_manifest.get("version"), "0.3.1")
     if cursor_manifest.get("displayName") != "Sol Development Advisor":
         fail("Cursor manifest displayName is not the generic product name")
     for field, path in (("skills", "./skills/"), ("agents", "./agents/"), ("commands", "./commands/"), ("rules", "./rules/")):

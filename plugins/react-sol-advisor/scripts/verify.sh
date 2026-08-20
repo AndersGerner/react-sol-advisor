@@ -1,5 +1,5 @@
 #!/bin/sh
-# Repository-level 0.3.0 verifier. Structured behavior belongs to the Python oracles;
+# Repository-level 0.3.1 verifier. Structured behavior belongs to the Python oracles;
 # this shell gate checks packaging, syntax, identity, and their deterministic entrypoints.
 
 set -eu
@@ -18,14 +18,14 @@ cursor_marketplace=$repo_dir/.cursor-plugin/marketplace.json
 for required in "$manifest" "$marketplace" "$cursor_manifest" "$cursor_marketplace" \
   "$script_dir/verify-cross-client.sh" "$script_dir/verify-cursor-agents.py" \
   "$script_dir/verify-codex-adapter.py" "$script_dir/verify-docs.py"; do
-  [ -f "$required" ] || fail "required 0.3.0 verifier input is missing: $required"
+  [ -f "$required" ] || fail "required 0.3.1 verifier input is missing: $required"
 done
 
 jq -e '
-  .name == "react-sol-advisor" and .version == "0.3.0" and
+  .name == "react-sol-advisor" and .version == "0.3.1" and
   .interface.displayName == "Sol Development Advisor" and
   (.interface.longDescription | contains("React Sol Advisor remains a legacy alias"))
-' "$manifest" >/dev/null || fail "Codex manifest identity or 0.3.0 metadata is invalid"
+' "$manifest" >/dev/null || fail "Codex manifest identity or 0.3.1 metadata is invalid"
 pass "Codex manifest identity and version"
 
 jq -e '.plugins | length == 1 and .[0].name == "react-sol-advisor" and .[0].source.path == "./plugins/react-sol-advisor"' "$marketplace" >/dev/null ||
@@ -34,7 +34,7 @@ pass "Codex marketplace identity"
 
 jq -e '
   .name == "sol-development-advisor" and .displayName == "Sol Development Advisor" and
-  .version == "0.3.0" and .skills == "./skills/" and .agents == "./agents/" and
+  .version == "0.3.1" and .skills == "./skills/" and .agents == "./agents/" and
   .commands == "./commands/" and .rules == "./rules/"
 ' "$cursor_manifest" >/dev/null || fail "Cursor manifest does not match the current plugin shape"
 jq -e '.plugins | length == 1 and .[0].name == "sol-development-advisor" and .[0].source == "./plugins/cursor-sol-development-advisor"' "$cursor_marketplace" >/dev/null ||
@@ -50,14 +50,36 @@ except ModuleNotFoundError:
     raise SystemExit("Python 3.11+ tomllib is required")
 root = pathlib.Path(sys.argv[1])
 expected = {
-    "react-sol-advisor-luna-implementer.toml": ("react_sol_advisor_luna_implementer", "gpt-5.6-luna", "max"),
-    "react-sol-advisor-terra-implementer.toml": ("react_sol_advisor_terra_implementer", "gpt-5.6-terra", "high"),
-    "react-sol-advisor-sol-reviewer.toml": ("react_sol_advisor_sol_reviewer", "gpt-5.6-sol", "high"),
+    "react-sol-advisor-luna-implementer.toml": {
+        "name": "react_sol_advisor_luna_implementer",
+        "model": "gpt-5.6-luna",
+        "effort": "max",
+        "service_tier": "fast",
+    },
+    "react-sol-advisor-terra-implementer.toml": {
+        "name": "react_sol_advisor_terra_implementer",
+        "model": "gpt-5.6-terra",
+        "effort": "high",
+    },
+    "react-sol-advisor-sol-reviewer.toml": {
+        "name": "react_sol_advisor_sol_reviewer",
+        "model": "gpt-5.6-sol",
+        "effort": "high",
+    },
 }
 for filename, pins in expected.items():
     path = root / filename
     data = tomllib.loads(path.read_text())
-    if (data.get("name"), data.get("model"), data.get("model_reasoning_effort")) != pins:
+    actual = {
+        "name": data.get("name"),
+        "model": data.get("model"),
+        "effort": data.get("model_reasoning_effort"),
+    }
+    if "service_tier" in pins:
+        actual["service_tier"] = data.get("service_tier")
+    elif "service_tier" in data:
+        raise SystemExit(f"unexpected service-tier pin for tier-agnostic role: {filename}")
+    if actual != pins:
         raise SystemExit(f"wrong TOML pin: {filename}")
 print("PASS: three exact native role pins")
 PY

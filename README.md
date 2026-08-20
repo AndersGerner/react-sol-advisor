@@ -1,4 +1,4 @@
-# Sol Development Advisor 0.3.0
+# Sol Development Advisor 0.3.1
 
 Sol Development Advisor is one generic production-delivery advisor with Codex and
 Cursor execution adapters. Every implementation uses production-delivery; React/UI,
@@ -60,9 +60,12 @@ The optional native role is:
     react_sol_advisor_luna_implementer
     model: gpt-5.6-luna
     reasoning: max
+    service tier: fast
 
-Native Luna is eligible only when exact role/model/effort and deliberate service-tier
-evidence are observable. It is bounded generic implementation work and never owns
+Native Luna is eligible only when exact role/model/effort and effective service-tier
+evidence are observable. The shipped role requests `service_tier = "fast"`; the runtime
+must report `fast` or its effective request ID `priority`. Missing or other tier
+evidence blocks the native lane. It is bounded generic implementation work and never owns
 architecture, PRs, Linear, publication, review completion, merge, closeout, deployment,
 or external state. Amber/red work escalates to the namespaced Terra / High role; red and
 critical boundaries receive a fresh Sol / High review.
@@ -72,7 +75,7 @@ Install or verify all three managed roles:
     plugin_dir="$(pwd)/plugins/react-sol-advisor"
     sh "$plugin_dir/scripts/install-agents.sh" --target-dir "$HOME/.codex/agents"
     sh "$plugin_dir/scripts/install-agents.sh" --target-dir "$HOME/.codex/agents" --check
-    # Explicitly upgrade only the accepted 0.1.1 Terra/Sol pair and add native Luna:
+    # Upgrade only the accepted 0.1.1 Terra/Sol or 0.3.0 Luna roles:
     sh "$plugin_dir/scripts/install-agents.sh" --target-dir "$HOME/.codex/agents" --upgrade-known
 
 The installer changes only the three namespaced files, refuses unknown or modified
@@ -80,9 +83,9 @@ managed roles, protects symlinked paths, preserves upstream sol-advisor-* files,
 publishes through a guarded transaction, rolls back on failure/signal, and is
 idempotent. Start a fresh Codex task after installing or updating roles.
 
-Runtime evidence reports exact role/model/effort and includes requested/observed service
-tier fields only when the rollout exposes them. Missing tier metadata is not upgraded
-into a Fast claim.
+Runtime evidence reports exact role/model/effort and requested/observed service-tier
+fields. Native Luna inspection rejects missing or unsupported effective tiers rather than
+upgrading them into a Fast claim; Terra and Sol reviewer remain tier-agnostic.
 
 ## Cursor adapter
 
